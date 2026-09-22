@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM --platform=linux/amd64 python:3.13-slim AS base
+FROM --platform=linux/amd64 python:3.14-slim AS base
 
 # Build-time metadata (Principle I: these are baked in because they describe the artifact
 # itself; ENVIRONMENT and ARTIFACT_DIGEST are deliberately NOT here — see
