@@ -13,5 +13,7 @@ from app import create_app
 app = create_app()
 
 if __name__ == "__main__":
+    # Dev-only entrypoint; needs external access for local/container testing. Production runs
+    # via gunicorn, not this path.
     port = int(os.environ.get("PORT", "8080"))
-    app.run(host="0.0.0.0", port=port)  # noqa: S104 - intentional: demo listens on all interfaces
+    app.run(host="0.0.0.0", port=port)  # nosec B104
