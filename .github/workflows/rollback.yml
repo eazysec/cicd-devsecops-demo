@@ -55,6 +55,12 @@ jobs:
     name: "Redeploy resolved digest"
     needs: resolve
     uses: ./.github/workflows/deploy.yml
+    # See the matching comment in release.yml: a reusable workflow's job permissions are
+    # capped by the calling job's own permissions — must mirror deploy.yml's job here too.
+    permissions:
+      id-token: write
+      contents: read
+      deployments: write
     with:
       environment: ${{ inputs.environment }}
       digest: ${{ needs.resolve.outputs.digest }}
