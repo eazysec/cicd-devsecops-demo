@@ -85,6 +85,15 @@ jobs:
             });
             core.setOutput('deployment_id', deployment.data.id);
 
+      # TEMPORARY debug step — remove once the OIDC "not authorized" issue is diagnosed.
+      # Prints the actual claims of the OIDC token this job requests, so they can be
+      # compared directly against the AWS role's trust policy instead of guessing.
+      - name: DEBUG - decode OIDC token claims
+        run: |
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq .
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
         with:
