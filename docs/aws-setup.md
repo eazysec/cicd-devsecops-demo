@@ -56,12 +56,29 @@ privilege, per constitution Principle II/FR-040):
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
-        "StringLike": { "token.actions.githubusercontent.com:sub": "repo:eazysec/cicd-devsecops-demo:environment:<ENVIRONMENT>" }
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:eazysec/cicd-devsecops-demo:environment:<ENVIRONMENT>",
+            "repo:eazysec@*/cicd-devsecops-demo@*:environment:<ENVIRONMENT>"
+          ]
+        }
       }
     }
   ]
 }
 ```
+
+**Gotcha, found the hard way**: GitHub's OIDC `sub` claim does not always use the plain
+`repo:OWNER/REPO:environment:ENV` form. It can instead embed the organization's and
+repository's immutable numeric IDs as `repo:OWNER@OWNER_ID/REPO@REPO_ID:environment:ENV` (this
+keeps the trust relationship valid across an org/repo rename). A trust policy written with only
+the plain-name pattern silently rejects every assume-role attempt with `Not authorized to
+perform sts:AssumeRoleWithWebIdentity` — decode the actual token to see which form your account
+is issuing (add a temporary debug step to the workflow: `curl -sS -H "Authorization: bearer
+$ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" |
+jq -r '.value' | cut -d. -f2 | base64 -d | jq .`) rather than guessing. The two-pattern
+`StringLike` list above accepts either form, so it keeps working regardless of which one GitHub
+issues for your account.
 
 **Permissions policy** (scoped to this environment's instance only):
 
