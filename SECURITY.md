@@ -74,6 +74,36 @@ the base image) go in `.trivyignore`, one CVE per line, each with a reviewer, a 
 re-review date — added via normal PR review, never by the introducing change's own author acting
 alone (the same non-bypass principle as secret scanning).
 
+## Static analysis and dependency scanning policy (SAST/SCA)
+
+Every push/PR touching application code runs [Bandit](https://bandit.readthedocs.io/) (SAST) and
+[pip-audit](https://github.com/pypa/pip-audit) (dependency vulnerability scanning) alongside the
+test suite — conditional gates, same as the tests, skipped with a stated reason for a
+documentation-only change (see [ADR 0006](docs/adr/0006-security-tool-placement.md)). Both
+currently block on any finding (no severity threshold, unlike Trivy) — the codebase is small
+enough that this hasn't yet needed the same nuanced policy Trivy has; revisit if that stops being
+true.
+
+`pip-audit` audits the project path (`pip-audit .`), which resolves only the declared **runtime**
+dependencies (`pyproject.toml`'s `[project.dependencies]`) — not the `[dev]` extra. A known
+vulnerability in a dev-only tool (e.g. pytest itself) that never ships in the deployed container
+therefore cannot block this gate; only what actually runs in production is in scope. See
+[research.md D10](specs/001-cicd-devsecops-demo/research.md#d10-sastsca-tool-selection-bandit--pip-audit)
+for why Bandit/pip-audit were chosen over Safety/Snyk, and why pip-audit and Trivy are both kept
+despite auditing overlapping ground — they have different, complementary blind spots.
+
+## Dynamic analysis (DAST) policy
+
+[OWASP ZAP](https://www.zaproxy.org/) runs a baseline (passive) scan against the `staging`
+environment after every successful deploy that passes its health check and smoke test —
+`environment: staging` only, never against `production` directly. Deliberately **informational**,
+not a blocking gate: results land in a build artifact (`zap-baseline-report`), not an
+auto-failed job. See [research.md
+D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category)
+for the reasoning — DAST findings tend to need more contextual human judgment than a
+CVE-with-a-known-fix does, which is exactly the "limits of automation" this project tries to
+demonstrate honestly rather than force into a binary pass/fail it doesn't fit well.
+
 ## Dependency policy
 
 Dependabot (`.github/dependabot.yml`) watches Python (`pip`), `Docker`, and `github-actions`

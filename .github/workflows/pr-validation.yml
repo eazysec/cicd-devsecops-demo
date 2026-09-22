@@ -96,7 +96,13 @@ jobs:
     # Conditional gate (FR-017): the job always runs so it always appears as a required check,
     # but internally skips the expensive steps — and states why — when change_type is
     # docs_only (FR-018). See data-model.md#changeclassification.
-    name: "Quality Gate: Unit Tests + Coverage"
+    #
+    # Bandit (SAST) and pip-audit (dependency/SCA scanning) live here, as steps, not as their
+    # own jobs — they analyze the same source checkout and need the same Python environment as
+    # pytest, so co-locating them avoids paying for a second checkout+setup-python+pip-install
+    # per tool (see ADR 0006). They're gated by the same docs_only skip as the tests, since
+    # there is nothing for either to analyze on a docs-only change.
+    name: "Quality & Security Gate: Tests, SAST, Dependency Scan"
     needs: classify
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -119,7 +125,7 @@ jobs:
         if: steps.decide.outputs.run_tests == 'false'
         run: |
           {
-            echo "### Quality Gate: Unit Tests + Coverage — ⏭️ skipped"
+            echo "### Quality & Security Gate: Tests, SAST, Dependency Scan — ⏭️ skipped"
             echo "Reason: change classified as \`docs_only\` (see the Classify change job) — no application or pipeline code changed."
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -137,10 +143,22 @@ jobs:
         if: steps.decide.outputs.run_tests == 'true'
         run: pytest --cov=app --cov-report=term-missing
 
+      - name: Bandit (SAST)
+        if: steps.decide.outputs.run_tests == 'true'
+        run: bandit -r app/ -x app/templates
+
+      - name: pip-audit (dependency scan, runtime deps only)
+        if: steps.decide.outputs.run_tests == 'true'
+        # `pip-audit .` resolves pyproject.toml's [project.dependencies] specifically — not the
+        # [dev] extras (pytest, ruff, bandit, pip-audit itself) — so a known vulnerability in a
+        # tool that never ships to production (e.g. pytest itself) can't block this gate; only
+        # what actually runs in the deployed container is in scope. See research.md D10.
+        run: pip-audit .
+
       - name: Report ran
         if: steps.decide.outputs.run_tests == 'true'
         run: |
           {
-            echo "### Quality Gate: Unit Tests + Coverage — ✅ ran"
+            echo "### Quality & Security Gate: Tests, SAST, Dependency Scan — ✅ ran"
             echo "Reason: change classified as \`${{ needs.classify.outputs.change_type }}\`."
           } >> "$GITHUB_STEP_SUMMARY"
