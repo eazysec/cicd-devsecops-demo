@@ -1,0 +1,27 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Claude Code local/session state (never commit credentials); .claude/skills/ (Spec Kit
+# commands) is intentionally versioned for reproducibility of the spec-driven workflow.
+.claude/settings.local.json
+.claude/*.local.*
+
+# Env files (never commit real secrets)
+.env
+.env.*
+!.env.example

@@ -1,0 +1,140 @@
+name: PR Validation
+
+# Fast feedback on any working branch (brief §7 "Push sur branche de travail"), and the
+# quality/security gate set on Pull Requests into main (brief §7 "Pull Request vers main").
+# Never deploys, never releases — see release.yml for the main-only chain (FR-019/FR-020).
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pr-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    name: "Classify change"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      change_type: ${{ steps.classify.outputs.change_type }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Classify
+        id: classify
+        uses: ./.github/actions/classify-change
+
+  secret-scan:
+    # Mandatory gate (constitution Principle II / FR-010, FR-011): runs unconditionally,
+    # regardless of change_type, and has no author-controlled skip mechanism.
+    name: "Security Gate: Secret Scanning"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+      # Runs the open-source gitleaks CLI directly rather than gitleaks/gitleaks-action:
+      # that wrapper Action requires a paid GITLEAKS_LICENSE for organization-owned
+      # repositories (this repo is owned by the eazysec organization) — the underlying CLI
+      # itself is MIT-licensed and free for any use. Version pinned + checksum-verified for
+      # supply-chain integrity (research.md D4/D8).
+      - name: Install Gitleaks (checksum-verified)
+        env:
+          GITLEAKS_VERSION: "8.21.2"
+          GITLEAKS_SHA256: "5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba"
+        run: |
+          set -euo pipefail
+          curl -sSL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          rm gitleaks.tar.gz gitleaks
+
+      - name: Gitleaks
+        run: gitleaks detect --no-banner --source . --config .gitleaks.toml --redact
+
+  lint:
+    # Runs unconditionally too (brief §6 example: "Docs/Lint ✅" even on doc-only changes) —
+    # it is fast, and a docs-only PR can still touch a stray Python file worth linting.
+    name: "Quality Gate: Lint"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Install Ruff
+        run: pip install --no-cache-dir "ruff>=0.6,<1.0"
+      - name: Ruff check
+        run: ruff check .
+
+  test:
+    # Conditional gate (FR-017): the job always runs so it always appears as a required check,
+    # but internally skips the expensive steps — and states why — when change_type is
+    # docs_only (FR-018). See data-model.md#changeclassification.
+    name: "Quality Gate: Unit Tests + Coverage"
+    needs: classify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Decide whether to run
+        id: decide
+        run: |
+          if [ "${{ needs.classify.outputs.change_type }}" = "docs_only" ]; then
+            echo "run_tests=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report skip (docs-only change)
+        if: steps.decide.outputs.run_tests == 'false'
+        run: |
+          {
+            echo "### Quality Gate: Unit Tests + Coverage — ⏭️ skipped"
+            echo "Reason: change classified as \`docs_only\` (see the Classify change job) — no application or pipeline code changed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Python
+        if: steps.decide.outputs.run_tests == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Install project (with dev deps)
+        if: steps.decide.outputs.run_tests == 'true'
+        run: pip install --no-cache-dir -e ".[dev]"
+
+      - name: pytest + coverage
+        if: steps.decide.outputs.run_tests == 'true'
+        run: pytest --cov=app --cov-report=term-missing
+
+      - name: Report ran
+        if: steps.decide.outputs.run_tests == 'true'
+        run: |
+          {
+            echo "### Quality Gate: Unit Tests + Coverage — ✅ ran"
+            echo "Reason: change classified as \`${{ needs.classify.outputs.change_type }}\`."
+          } >> "$GITHUB_STEP_SUMMARY"

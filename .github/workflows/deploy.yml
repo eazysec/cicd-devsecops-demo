@@ -1,0 +1,154 @@
+name: Deploy
+
+# Reusable promotion workflow (brief §31: avoid duplicating deploy logic across workflows).
+# Called twice by release.yml (staging, then production) with the SAME digest — this file
+# itself has no idea whether it's a first deploy or a promotion, it just places one immutable
+# digest into one environment. Also directly workflow_dispatch-able for a manual
+# promote/redeploy (FR-022) without needing a new commit.
+#
+# `environment: ${{ inputs.environment }}` on the job is what makes GitHub apply that
+# environment's protection rules (production requires a reviewer — see
+# docs/github-environments-setup.md) and exposes its secrets/variables.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "staging | production"
+        required: true
+        type: string
+      digest:
+        description: "Full sha256:... digest to deploy (never a mutable tag)"
+        required: true
+        type: string
+      version:
+        description: "SemVer version, for the deployment record (optional)"
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        type: choice
+        options: [staging, production]
+      digest:
+        description: "Full sha256:... digest to deploy (never a mutable tag)"
+        required: true
+        type: string
+      version:
+        description: "SemVer version, for the deployment record (optional)"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false # never interrupt a deploy already in flight to this environment
+
+env:
+  GHCR_IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  deploy:
+    name: "Deploy to ${{ inputs.environment }}"
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 10
+    permissions:
+      id-token: write # OIDC — no long-lived AWS credentials anywhere (research.md D1)
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Record deployment (in_progress)
+        id: gh-deployment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: '${{ inputs.environment }}',
+              auto_merge: false,
+              required_contexts: [],
+              payload: { digest: '${{ inputs.digest }}', version: '${{ inputs.version }}' },
+            });
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'in_progress',
+            });
+            core.setOutput('deployment_id', deployment.data.id);
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Deploy digest to ${{ inputs.environment }}
+        id: deploy
+        continue-on-error: true
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: scripts/deploy.sh "${{ inputs.environment }}" "${{ inputs.digest }}"
+
+      - name: Smoke test
+        id: smoke
+        if: steps.deploy.outcome == 'success'
+        continue-on-error: true
+        run: scripts/smoke-test.sh "${{ vars.APP_URL }}"
+
+      - name: Mark deployment successful
+        if: steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.gh-deployment.outputs.deployment_id }},
+              state: 'success',
+              environment_url: '${{ vars.APP_URL }}',
+            });
+
+      # Automatic rollback (spec.md US5, Acceptance Scenario 1): if deploy or the smoke test
+      # failed AND this is production, self-heal to the previous known-good digest before
+      # failing the job — a bad promotion never sits in production waiting for a human to
+      # notice (constitution Principle V: deterministic, reproducible demo).
+      - name: Mark deployment failed
+        if: steps.deploy.outcome != 'success' || steps.smoke.outcome != 'success'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.gh-deployment.outputs.deployment_id }},
+              state: 'failure',
+            });
+
+      - name: Automatic rollback (production only)
+        if: |
+          inputs.environment == 'production' &&
+          (steps.deploy.outcome != 'success' || steps.smoke.outcome != 'success')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: scripts/rollback.sh production "${{ steps.gh-deployment.outputs.deployment_id }}"
+
+      - name: Fail the job if deploy or smoke test failed
+        if: steps.deploy.outcome != 'success' || steps.smoke.outcome != 'success'
+        run: |
+          echo "::error::Deploy to ${{ inputs.environment }} did not pass verification (deploy=${{ steps.deploy.outcome }}, smoke=${{ steps.smoke.outcome }})." >&2
+          exit 1

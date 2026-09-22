@@ -1,0 +1,20 @@
+# Trivy vulnerability exception file for cicd-devsecops-demo.
+#
+# Policy (docs/adr and research.md D5): the pipeline blocks promotion ONLY on
+# CRITICAL/HIGH findings that have a known fix available (`--ignore-unfixed`). A CVE
+# with no fix available can never appear here as a "workaround" — it already doesn't
+# block, by policy, so it needs no entry. This file exists ONLY for a reviewed,
+# time-boxed exception to a *fixable* HIGH/CRITICAL finding that the team has
+# deliberately decided not to fix yet (e.g. the fix is not yet compatible with our base
+# image, or is scheduled for the next release).
+#
+# Format: one CVE id per line, followed by a comment with:
+#   - who reviewed/approved the exception and when
+#   - why the fix is deferred
+#   - a re-review date (exceptions are not permanent)
+#
+# Example (remove once a real exception is needed):
+# CVE-2024-00000 # reviewed 2026-09-22 by @maintainer — fix requires base image bump
+#                # scheduled for next release; re-review by 2026-10-22
+#
+# No exceptions are currently in effect.

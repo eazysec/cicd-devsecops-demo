@@ -1,0 +1,61 @@
+name: Rollback
+
+# Manual, controlled operation (brief §7 workflow_dispatch; spec.md US5). Resolves the previous
+# known-good digest for an environment (or uses an operator-supplied digest, which also makes
+# this a general-purpose "promote/redeploy a named digest" entrypoint per FR-022), then
+# delegates the actual promotion to deploy.yml so every deploy path — release, manual promote,
+# and rollback — shares the same AWS auth, deployment-record, and smoke-test logic.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to roll back"
+        required: true
+        type: choice
+        options: [staging, production]
+      digest:
+        description: "Optional: exact sha256:... digest to restore. Leave empty to auto-resolve the previous known-good deployment."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: "Resolve target digest"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: read
+    outputs:
+      digest: ${{ steps.resolve.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Resolve digest
+        id: resolve
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ -n "${{ inputs.digest }}" ]; then
+            echo "Using operator-supplied digest: ${{ inputs.digest }}"
+            echo "digest=${{ inputs.digest }}" >> "$GITHUB_OUTPUT"
+          else
+            digest="$(scripts/resolve_deployment_digest.sh "${{ inputs.environment }}")"
+            echo "Auto-resolved previous known-good digest: $digest"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: "Redeploy resolved digest"
+    needs: resolve
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: ${{ inputs.environment }}
+      digest: ${{ needs.resolve.outputs.digest }}
+    secrets: inherit

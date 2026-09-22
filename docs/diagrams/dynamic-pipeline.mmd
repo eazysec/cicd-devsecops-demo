@@ -1,0 +1,35 @@
+flowchart TD
+    Change["Change pushed / PR opened"] --> Classify["Classify change\n(scripts/classify_change.py)"]
+    Classify -->|docs_only| DocsPath["Change type: docs_only"]
+    Classify -->|application| AppPath["Change type: application"]
+    Classify -->|pipeline_infra| InfraPath["Change type: pipeline_infra"]
+
+    subgraph Mandatory["Mandatory gates — always run, never skippable by the author"]
+        SecretScan["🔒 Secret Scanning (Gitleaks)"]
+        Lint["📝 Lint (Ruff)"]
+    end
+
+    DocsPath --> Mandatory
+    AppPath --> Mandatory
+    InfraPath --> Mandatory
+
+    DocsPath -.->|skipped, reason shown| SkipTests["⏭️ Unit Tests + Coverage"]
+    DocsPath -.->|skipped, reason shown| SkipBuild["⏭️ Docker Build"]
+    DocsPath -.->|skipped, reason shown| SkipScan["⏭️ Trivy Scan"]
+    DocsPath -.->|skipped, reason shown| SkipDeploy["⏭️ Deploy"]
+
+    AppPath --> RunTests["✅ Unit Tests + Coverage"]
+    AppPath -.->|only after merge to main,\nvia a Release| RunBuild["✅ Docker Build"]
+    InfraPath --> RunTests
+    InfraPath -.->|only after merge to main,\nvia a Release| RunBuild
+
+    RunBuild --> RunScan["✅ Trivy Scan"]
+    RunScan --> RunDeploy["✅ Deploy (staging → production)"]
+
+    Mandatory --> Summary["Job Summary:\nevery gate shown ✅ ran / ⏭️ skipped (reason) —\nnever silently absent"]
+    SkipTests --> Summary
+    SkipBuild --> Summary
+    SkipScan --> Summary
+    SkipDeploy --> Summary
+    RunTests --> Summary
+    RunDeploy --> Summary

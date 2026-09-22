@@ -1,0 +1,43 @@
+name: "Classify change"
+description: >
+  Classifies the current push/PR's changed files into docs_only, application, or
+  pipeline_infra, per specs/001-cicd-devsecops-demo/data-model.md#changeclassification. Wraps
+  scripts/classify_change.py so the policy logic exists in exactly one, unit-tested place.
+
+outputs:
+  change_type:
+    description: "docs_only | application | pipeline_infra"
+    value: ${{ steps.classify.outputs.change_type }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Determine changed files
+      id: diff
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+        else
+          base="${{ github.event.before }}"
+          head="${{ github.sha }}"
+        fi
+
+        if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+          # First push on a new branch, or otherwise no meaningful base: treat everything
+          # tracked in the repo at HEAD as "changed" so the classifier never under-scopes.
+          git ls-files > /tmp/classify-changed-files.txt
+        else
+          git diff --name-only "$base" "$head" > /tmp/classify-changed-files.txt || true
+        fi
+
+    - name: Classify
+      id: classify
+      shell: bash
+      run: |
+        set -euo pipefail
+        change_type="$(python3 scripts/classify_change.py --changed-files-file /tmp/classify-changed-files.txt)"
+        echo "change_type=$change_type" >> "$GITHUB_OUTPUT"
+        echo "### Change classification: \`$change_type\`" >> "$GITHUB_STEP_SUMMARY"
