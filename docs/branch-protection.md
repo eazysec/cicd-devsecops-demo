@@ -14,7 +14,10 @@ works — a classic branch protection rule is described here for simplicity):
   from `.github/workflows/pr-validation.yml`):
   - `Security Gate: Secret Scanning`
   - `Quality Gate: Lint`
-  - `Quality Gate: Unit Tests + Coverage`
+  - `Quality & Security Gate: Tests, SAST, Dependency Scan` (renamed from `Quality Gate: Unit
+    Tests + Coverage` when Bandit/pip-audit were added — **if you already configured branch
+    protection with the old name, you must edit the rule and swap it for this one, or the check
+    stops being enforced entirely** since GitHub matches required checks by exact name)
 - **Require branches to be up to date before merging**: on (avoids merging a PR whose checks ran
   against a stale base)
 - **Do not allow bypassing the above settings**: on — this is the setting that makes the

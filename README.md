@@ -90,9 +90,12 @@ rollback.
 
 - Python 3.13
 - Docker (for the container/Emergency-Demo-Plan path)
+- Bandit and pip-audit come via `pip install -e ".[dev]"` (see below) — same tier as pytest/Ruff,
+  not a separate install
 - Optional, for full local validation: [Gitleaks](https://github.com/gitleaks/gitleaks),
   [Trivy](https://github.com/aquasecurity/trivy), [shellcheck](https://www.shellcheck.net/),
-  [actionlint](https://github.com/rhysd/actionlint)
+  [actionlint](https://github.com/rhysd/actionlint); `docker pull ghcr.io/zaproxy/zaproxy:2.17.0`
+  ahead of time if you want the local DAST stage to run in the Emergency Demo Plan
 
 ## Local installation
 
@@ -152,10 +155,12 @@ Full event→workflow→job contract:
 ## The PR pipeline
 
 [`.github/workflows/pr-validation.yml`](.github/workflows/pr-validation.yml): classify the change,
-then run Secret Scanning (Gitleaks, always) and Lint (Ruff, always) as mandatory gates, and Unit
-Tests + Coverage (pytest) as a conditional gate that always *appears* but internally skips its
-expensive steps — with a stated reason in the Job Summary — for a `docs_only` change. Never
-builds an image, never deploys.
+then run Secret Scanning (Gitleaks, always) and Lint (Ruff, always) as mandatory gates, and
+Tests + SAST + Dependency Scan (pytest, Bandit, pip-audit) as a conditional gate that always
+*appears* but internally skips its expensive steps — with a stated reason in the Job Summary —
+for a `docs_only` change. Never builds an image, never deploys. Security tools are co-located by
+pipeline stage rather than grouped in a separate file/job — see [ADR
+0006](docs/adr/0006-security-tool-placement.md) for why.
 
 ## The main pipeline (release chain)
 
@@ -254,11 +259,15 @@ setup: [`docs/aws-setup.md`](docs/aws-setup.md) and
 ## Security
 
 See [`SECURITY.md`](SECURITY.md) for the full policy. Summary: Gitleaks on every push/PR,
-non-bypassable by the change's own author; Trivy on every built image, blocking only on
+non-bypassable by the change's own author; Bandit (SAST) and pip-audit (dependency/SCA, runtime
+deps only — [research.md D10](specs/001-cicd-devsecops-demo/research.md#d10-sastsca-tool-selection-bandit--pip-audit))
+alongside it, both conditional like the tests; Trivy on every built image, blocking only on
 fixable HIGH/CRITICAL findings (so an unpatchable or brand-new CVE can never make a previously
 green pipeline flaky — see [research.md
-D5](specs/001-cicd-devsecops-demo/research.md#d5-vulnerability-scanning-policy-trivy)); every
-GitHub Action pinned by commit SHA; least-privilege, OIDC-based AWS access; Dependabot for
+D5](specs/001-cicd-devsecops-demo/research.md#d5-vulnerability-scanning-policy-trivy)); OWASP ZAP
+baseline scan (DAST) against staging after every successful deploy, informational rather than
+blocking ([research.md D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category));
+every GitHub Action pinned by commit SHA; least-privilege, OIDC-based AWS access; Dependabot for
 `pip`/`docker`/`github-actions`.
 
 ## Secrets and variables
@@ -325,10 +334,11 @@ If GitHub, GHCR, or AWS is unreachable, none of that is needed to show the core 
 bash scripts/demo-local.sh
 ```
 
-Runs, locally, with zero network dependency on GitHub/registry/AWS: lint → tests → secret scan →
-Docker build → Trivy (if installed) → `docker run` → health check → smoke test — stopping at, and
-naming, the first failing stage. Optional tools that aren't installed are reported as skipped,
-never as a failure.
+Runs, locally, with zero network dependency on GitHub/registry/AWS: lint → tests → SAST (Bandit)
+→ dependency scan (pip-audit) → secret scan → Docker build → Trivy (if installed) → `docker run`
+→ health check → smoke test → ZAP baseline scan (if its image is already cached locally —
+never pulled fresh here, same reasoning as Trivy) — stopping at, and naming, the first failing
+stage. Optional tools that aren't installed/cached are reported as skipped, never as a failure.
 
 Install the optional tools once, ahead of time (not on stage):
 
@@ -337,6 +347,8 @@ Install the optional tools once, ahead of time (not on stage):
 curl -sL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
 # Trivy
 curl -sL https://github.com/aquasecurity/trivy/releases/download/v0.58.1/trivy_0.58.1_Linux-64bit.tar.gz | tar -xz trivy
+# ZAP baseline image (large — pull the day before, not on stage)
+docker pull ghcr.io/zaproxy/zaproxy:2.17.0
 ```
 
 ## Determinism & Risk Register
@@ -353,6 +365,7 @@ curl -sL https://github.com/aquasecurity/trivy/releases/download/v0.58.1/trivy_0
 | A demo branch/PR used for rehearsal pollutes `main`'s history | Demo branches (docs-only, failing-test, fake-secret) are disposable and never merged — delete after rehearsal |
 | A GitHub Action wrapper silently requires a paid license for org-owned repos (found: `gitleaks/gitleaks-action` for the `eazysec` org) | Run the free, MIT-licensed `gitleaks` CLI directly instead ([research.md D8](specs/001-cicd-devsecops-demo/research.md#d8-secret-scanning-execution-mode-gitleaks-cli-directly-not-gitleaks-action)) |
 | An "obviously fake" secret value doesn't actually trigger Gitleaks (its default rules allowlist common placeholders like `EXAMPLE`/`FAKEFAKE...`) | Use the specific, validated, random-looking fake value from `specs/001-cicd-devsecops-demo/quickstart.md` §2 — confirmed to trigger locally before relying on it live |
+| ZAP's Docker image (large) fails to pull mid-demo, or `pip-audit`'s OSV API is unreachable | ZAP scan is informational, not blocking (a failed pull just means no DAST report that run, nothing else stops); pre-pull `ghcr.io/zaproxy/zaproxy:2.17.0` the day before for the local Emergency Demo Plan path; `pip-audit` only runs in CI (GitHub-hosted runners have reliable outbound network), never required for the Emergency Demo Plan itself |
 
 ## Architecture Decision Records
 
