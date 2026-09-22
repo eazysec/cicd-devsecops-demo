@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.1.2...cicd-devsecops-demo-v1.2.0) (2026-09-22)
+
+
+### Features
+
+* add SAST (Bandit), dependency scanning (pip-audit), and DAST (Z… ([db47c8f](https://github.com/eazysec/cicd-devsecops-demo/commit/db47c8f5a9799c5eb4ad6ba85c07c74096465acb))
+* add SAST (Bandit), dependency scanning (pip-audit), and DAST (ZAP) gates ([7d16f2f](https://github.com/eazysec/cicd-devsecops-demo/commit/7d16f2f079f5bef6c9041bec56ac924c4470f8c1))
+
 ## [1.1.2](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.1.1...cicd-devsecops-demo-v1.1.2) (2026-09-22)
 
 
