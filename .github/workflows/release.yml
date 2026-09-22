@@ -124,6 +124,14 @@ jobs:
     needs: [release-please, build-scan-publish]
     if: needs.release-please.outputs.release_created == 'true'
     uses: ./.github/workflows/deploy.yml
+    # A reusable workflow's own job permissions are capped by the CALLING job's permissions —
+    # without this block, deploy.yml's request for id-token/deployments write is silently
+    # downgraded to "none" (discovered via a real failed run: "is only allowed 'deployments:
+    # none, id-token: none'"). Must mirror what deploy.yml's own job declares.
+    permissions:
+      id-token: write
+      contents: read
+      deployments: write
     with:
       environment: staging
       digest: ${{ needs.build-scan-publish.outputs.digest }}
@@ -135,6 +143,10 @@ jobs:
     needs: [release-please, build-scan-publish, deploy-staging]
     if: needs.release-please.outputs.release_created == 'true'
     uses: ./.github/workflows/deploy.yml
+    permissions:
+      id-token: write
+      contents: read
+      deployments: write
     with:
       environment: production
       digest: ${{ needs.build-scan-publish.outputs.digest }}

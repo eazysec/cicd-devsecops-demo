@@ -72,14 +72,16 @@ dites-le-moi et je passe ces lignes en PASS/FAIL ici.)*
 
 ## Configuration manuelle restante
 
-- [ ] **GitHub** : appliquer `docs/branch-protection.md` (checks requis sur `main`)
+- [x] **GitHub** : appliquer `docs/branch-protection.md` (checks requis sur `main`) — à reconfirmer
+      (annoncé "probablement fait" mais pas revérifié en détail)
 - [ ] **GitHub** : créer les Environments `staging`/`production` avec leurs variables
-      (`docs/github-environments-setup.md`)
+      (`docs/github-environments-setup.md`) — en cours (Phase 4)
 - [ ] **GitHub** : approbateur requis configuré sur `production`
-- [ ] **GitHub** : rendre le package GHCR public après le premier build
-- [ ] **AWS** : provisionner les 2 EC2 (`docs/aws-setup.md`)
-- [ ] **AWS** : provider OIDC créé
-- [ ] **AWS** : les 2 rôles IAM scopés créés (staging, production)
+- [ ] **GitHub** : rendre le package GHCR public après le premier build — bloqué tant qu'aucune
+      image n'a été poussée (attend le merge de la 1ère Release PR)
+- [x] **AWS** : provisionner les 2 EC2 (`docs/aws-setup.md`) — confirmé, `docker --version` testé OK
+- [x] **AWS** : provider OIDC créé
+- [x] **AWS** : les 2 rôles IAM scopés créés (staging, production)
 
 ## Secrets et variables (noms uniquement)
 
@@ -179,3 +181,33 @@ git checkout main && git checkout -b fix/health-endpoint
      at...". Corrigé : le nettoyage automatique ne se déclenche plus que sur échec (`fail()`) ou
      interruption (Ctrl+C) ; en cas de succès le conteneur reste volontairement démarré, avec un
      rappel de la commande pour l'arrêter (`docker rm -f cicd-devsecops-demo-local`).
+- **2026-09-22** — Premier `git push` refusé par la **Push Protection native de GitHub** (secret
+  scanning côté serveur, indépendant de Gitleaks) : le faux secret figé (clé AWS factice + son
+  secret pairé) dans `quickstart.md` et `docs/recap.md` a été détecté comme une vraie clé
+  AWS — preuve qu'il était assez réaliste pour le job Gitleaks du pipeline, mais ça bloquait aussi
+  la doc elle-même. Correction structurelle : plus aucune valeur figée ressemblant à un secret
+  dans un fichier suivi par git. Nouveau script `scripts/generate-demo-secret.sh` qui génère une
+  paire de clés factices aléatoire à la volée (jamais committée telle quelle) ; `.gitleaks.toml`,
+  `quickstart.md`, `SECURITY.md`, `README.md` mis à jour en conséquence. Comme le commit initial
+  n'avait jamais été accepté par GitHub (push refusé), il a été **amendé** (pas de nouveau commit
+  par-dessus) pour que le secret disparaisse aussi de l'historique local — vérifié avec
+  `gitleaks detect` sur tout l'historique + `git log -p --all | grep` : aucune trace. Nouveau SHA
+  de commit : `df46b05` (remplace `4e5d50b`, jamais publié). Bonus pédagogique identifié : la
+  Push Protection GitHub et Gitleaks-en-CI forment une défense en profondeur à deux niveaux —
+  documenté dans `SECURITY.md`.
+- **2026-09-22** — `df46b05` poussé et accepté par GitHub (après ajout du scope `workflow` sur le
+  PAT). Phases 0-3 terminées côté utilisateur (AWS : 2 instances EC2 + 2 rôles IAM OIDC + rôle
+  SSM partagé, tous vérifiés via `docker --version` en Run Command). Phase 4 (GitHub Environments)
+  en cours. Branche `test/trigger-checks` créée pour faire tourner `pr-validation.yml` au moins
+  une fois (nécessaire pour que les noms de check apparaissent dans la recherche de Settings →
+  Branches — confirmé : le `push` seul suffit à déclencher le workflow, pas besoin d'ouvrir la PR).
+- **2026-09-22** — **Vrai bug corrigé (3)** : le workflow `Release` échoue au tout premier run
+  avec `Invalid workflow file ... is only allowed 'deployments: none, id-token: none'`. Cause :
+  un workflow réutilisable (`uses: ./.github/workflows/deploy.yml`) voit ses permissions
+  plafonnées par celles du **job appelant** — `deploy-staging`/`deploy-production` dans
+  `release.yml`, et `deploy` dans `rollback.yml`, n'avaient pas de bloc `permissions:` explicite,
+  donc héritaient du plafond par défaut du workflow (`contents: read` seul) au lieu de
+  `id-token: write` + `deployments: write` dont `deploy.yml` a besoin. Corrigé dans les trois jobs
+  appelants. Trouvé une deuxième fois le secret factice figé en toutes lettres, cette fois dans le
+  texte du journal lui-même (en racontant l'incident précédent) — reformulé sans répéter la
+  valeur littérale ; leçon retenue : ne jamais recopier la valeur, même en la décrivant.
