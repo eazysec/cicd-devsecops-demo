@@ -10,7 +10,13 @@ on:
     branches: [main]
 
 concurrency:
-  group: pr-validation-${{ github.workflow }}-${{ github.ref }}
+  # github.head_ref (branch name, PR events only) falls back to github.ref_name (branch name,
+  # no "refs/heads/" prefix, push events) so a push to a branch with an open PR — which fires
+  # both a `push` and a `pull_request: synchronize` event for the same commit — lands both
+  # runs in the SAME group instead of two different ones (github.ref alone differs between
+  # the two event types: refs/heads/<branch> vs refs/pull/<n>/merge), so the older run is
+  # actually cancelled instead of both running redundantly to completion.
+  group: pr-validation-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
