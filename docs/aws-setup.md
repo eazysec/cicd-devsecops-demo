@@ -74,9 +74,12 @@ repository's immutable numeric IDs as `repo:OWNER@OWNER_ID/REPO@REPO_ID:environm
 keeps the trust relationship valid across an org/repo rename). A trust policy written with only
 the plain-name pattern silently rejects every assume-role attempt with `Not authorized to
 perform sts:AssumeRoleWithWebIdentity` — decode the actual token to see which form your account
-is issuing (add a temporary debug step to the workflow: `curl -sS -H "Authorization: bearer
-$ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" |
-jq -r '.value' | cut -d. -f2 | base64 -d | jq .`) rather than guessing. The two-pattern
+is issuing rather than guessing. `deploy.yml` has a built-in, opt-in way to do this: run it via
+`workflow_dispatch` with the `debug` input set to `true`, and a step prints the token's decoded
+claims (`sub`, `aud`, etc.) before the AWS auth step runs. It's off by default (no noisy logs on
+every normal deploy) and only exists on the manual `workflow_dispatch` path, not the automatic
+release-triggered one — if an automatic deploy fails mysteriously, re-run the same digest
+manually with `debug: true` rather than digging through logs blind. The two-pattern
 `StringLike` list above accepts either form, so it keeps working regardless of which one GitHub
 issues for your account.
 
