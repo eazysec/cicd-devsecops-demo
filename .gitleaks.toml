@@ -1,0 +1,32 @@
+# Gitleaks configuration for cicd-devsecops-demo.
+#
+# We extend Gitleaks' default, actively-maintained ruleset (AWS keys, generic API keys,
+# high-entropy strings, private keys, etc.) rather than hand-rolling detection rules —
+# see https://github.com/gitleaks/gitleaks#configuration.
+[extend]
+useDefault = true
+
+# --------------------------------------------------------------------------------------
+# Allowlist policy (constitution Principle II / spec.md FR-014):
+#
+# An allowlist entry here is the ONLY sanctioned way to except a specific, reviewed
+# finding (e.g. a confirmed false positive, or a fixture value that is deliberately not a
+# real secret). Every entry below MUST:
+#   1. Reference a specific commit/path/regex — never a blanket rule that could hide an
+#      unrelated future finding.
+#   2. Carry a comment stating who reviewed it, when, and why it is safe.
+#   3. Be added via a normal Pull Request review — never by the same commit/PR that
+#      introduces the finding, and never by the finding's own author acting alone. This is
+#      enforced by ordinary branch-protection review rules on `main`, not by Gitleaks
+#      itself, since Gitleaks has no concept of "who is allowed to approve."
+#
+# There are no exceptions defined. Earlier drafts of this repository briefly hardcoded a
+# realistic-looking fake secret value in quickstart.md (with a path-scoped allowlist entry
+# here to let that one file pass) so the demo instructions could be copy-pasted verbatim.
+# That was abandoned: GitHub's own push-protection secret scanning blocked the very first
+# push of that documentation, because a realistic-looking value sitting in a tracked file
+# is indistinguishable from a real leaked credential to a scanner — which is, on reflection,
+# exactly correct behavior, not a false positive to work around. The demo secret is now
+# generated fresh at use time by scripts/generate-demo-secret.sh and is never committed to
+# any tracked file, so no allowlist entry is needed anywhere.
+# --------------------------------------------------------------------------------------

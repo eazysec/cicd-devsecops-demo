@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>cicd-devsecops-demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0e14;
+      --panel: #131826;
+      --border: #232a3d;
+      --text: #e8ecf4;
+      --muted: #8b93a7;
+      --accent: #5eead4;
+      --ok: #34d399;
+      --bad: #f87171;
+      --env-staging: #fbbf24;
+      --env-production: #f87171;
+      --env-local: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 20% -10%, #1c2438 0%, var(--bg) 55%);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      padding: 2rem;
+    }
+    .card {
+      width: min(880px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: clamp(1.5rem, 4vw, 3rem);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    }
+    h1 {
+      margin: 0 0 0.25rem;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      letter-spacing: -0.01em;
+    }
+    .project {
+      color: var(--muted);
+      font-size: clamp(1rem, 2.2vw, 1.25rem);
+      margin: 0 0 2rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .badges { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 2rem; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 1rem; border-radius: 999px;
+      font-weight: 600; font-size: clamp(0.95rem, 2vw, 1.15rem);
+      border: 1px solid var(--border); background: #0e1320;
+    }
+    .dot { width: 0.7em; height: 0.7em; border-radius: 50%; background: var(--ok); }
+    .dot.bad { background: var(--bad); }
+    .badge.env-staging { color: var(--env-staging); border-color: color-mix(in srgb, var(--env-staging) 40%, var(--border)); }
+    .badge.env-production { color: var(--env-production); border-color: color-mix(in srgb, var(--env-production) 40%, var(--border)); }
+    .badge.env-local { color: var(--env-local); border-color: color-mix(in srgb, var(--env-local) 40%, var(--border)); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem 2rem;
+    }
+    .field dt {
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+      font-size: 0.78rem; margin-bottom: 0.35rem;
+    }
+    .field dd {
+      margin: 0; font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      word-break: break-all;
+    }
+    footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>🚀 DevOps / DevSecOps Live Demo</h1>
+    <p class="project">cicd-devsecops-demo</p>
+
+    <div class="badges">
+      <span class="badge" id="status-badge"><span class="dot" id="status-dot"></span><span id="status-text">checking…</span></span>
+      <span class="badge env-{{ environment }}">{{ environment }}</span>
+      <span class="badge">v{{ app_version }}</span>
+    </div>
+
+    <dl class="grid">
+      <div class="field">
+        <dt>Git SHA</dt>
+        <dd>{{ git_sha }}</dd>
+      </div>
+      <div class="field">
+        <dt>Build time (UTC)</dt>
+        <dd>{{ build_time }}</dd>
+      </div>
+      <div class="field">
+        <dt>Artifact digest</dt>
+        <dd>{{ artifact_digest or "n/a" }}</dd>
+      </div>
+      <div class="field">
+        <dt>Environment</dt>
+        <dd>{{ environment }}</dd>
+      </div>
+    </dl>
+
+    <footer>Live status from <code>GET /health</code> · refreshed every 5s</footer>
+  </main>
+
+  <script>
+    async function refreshHealth() {
+      const dot = document.getElementById("status-dot");
+      const text = document.getElementById("status-text");
+      try {
+        const res = await fetch("/health", { cache: "no-store" });
+        const data = await res.json();
+        const healthy = res.ok && data.status === "healthy";
+        dot.classList.toggle("bad", !healthy);
+        text.textContent = healthy ? "healthy" : "unhealthy";
+      } catch (err) {
+        dot.classList.add("bad");
+        text.textContent = "unreachable";
+      }
+    }
+    refreshHealth();
+    setInterval(refreshHealth, 5000);
+  </script>
+</body>
+</html>
