@@ -209,3 +209,57 @@ which was explicitly proposed in the brief and works fine as a plain CLI invocat
 **How this was caught**: discovered during implementation validation, not left to be discovered
 live at the conference — see the corresponding entry in
 [Determinism & Risk Register](../../README.md#determinism--risk-register).
+
+---
+
+## D9. Security tool placement: co-located by pipeline stage, not grouped by category
+
+**Decision**: Secret scanning, SAST, and dependency scanning stay inside `pr-validation.yml`
+(alongside lint, in the same jobs where they can reuse an already-checked-out/already-configured
+Python environment); image vulnerability scanning stays inside `release.yml` (right after the
+build it scans); DAST stays inside `deploy.yml` (right after the staging deploy it verifies). No
+dedicated `security.yml` file, and no `security`/`quality` job split within `pr-validation.yml`.
+
+**Rationale**: each tool's natural trigger is tied to a different artifact — Gitleaks/Bandit/
+`pip-audit` need source code (available on every push/PR, before any build), Trivy needs a built
+image (only exists post-build), ZAP needs a running instance (only exists post-deploy). Forcing
+them into one file/category would require either one workflow reacting to three unrelated event
+types, or a same-named job silently mixing an unconditional check (Gitleaks, which must never be
+skippable, Principle II) with conditional ones (Bandit/`pip-audit`, which have nothing to analyze
+on a docs-only change) — risking exactly the kind of accidental weakening a security-focused demo
+must not have. Co-locating by pipeline stage is also cheaper: tools sharing a stage share the
+same `actions/checkout`/`actions/setup-python` cost instead of paying it again per category.
+
+**Alternatives considered**: A single `security.yml` aggregating all security tools — rejected,
+see rationale above. A `security` job + `quality` job split inside `pr-validation.yml` — rejected
+for the same reason: it would blur the obligatoire/conditionnel distinction that's more
+important, pedagogically, than a security/quality label.
+
+---
+
+## D10. SAST/SCA tool selection: Bandit + pip-audit
+
+**Decision**: [Bandit](https://bandit.readthedocs.io/) for SAST (Python-specific static analysis)
+and [pip-audit](https://github.com/pypa/pip-audit) for manifest-level dependency scanning, both
+added as steps in `pr-validation.yml`'s existing test job.
+
+**Rationale**: `pip-audit` is official PyPA tooling — free, no account/API key required, queries
+the open OSV/PyPI Advisory Database. Matches the project's existing "zero unnecessary credential"
+stance (OIDC over static AWS keys, public GHCR over a private registry with a PAT). Bandit is the
+de facto standard Python SAST linter, zero-config for a small codebase, fast enough for the PR
+gate's time budget (FR-008).
+
+**Alternatives considered**: *Safety* — was the historical default for Python dependency
+scanning, but its free tier's vulnerability database access has been restricted since its
+2022-2023 shift to a commercial model; rejected to avoid an unnecessary account/paywall for a
+demo that should run for anyone who clones it. *Snyk* — requires an account/API token; rejected
+for the same reason, and it would introduce a third-party SaaS dependency this project has
+deliberately avoided everywhere else.
+
+**Complementary blind spots worth noting**: `pip-audit` inspects *declared* dependencies before
+a build even happens, so it would catch a vulnerable `flask`/`gunicorn` pin earlier than Trivy
+ever could — but it would likely **not** have caught the D-listed `pip`-vendored `msgpack`/
+`pkg_resources` finding from the first real Trivy scan (same detection limitation as `pip show`,
+which also reported those as "not found"). Trivy inspects the actual image filesystem and caught
+what `pip-audit`-style manifest scanning structurally cannot. Neither tool alone covers what the
+other does — the rationale for running both, not just one.

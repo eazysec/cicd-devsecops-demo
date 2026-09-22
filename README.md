@@ -377,6 +377,8 @@ Short, focused ADRs for the decisions worth defending in front of an experienced
 - [0003 — Container registry: public GHCR](docs/adr/0003-registry.md)
 - [0004 — Build-once, promote-the-same-artifact enforcement](docs/adr/0004-build-once-promote.md)
 - [0005 — Rollback strategy](docs/adr/0005-rollback-strategy.md)
+- [0006 — Security tool placement: co-located by pipeline stage](docs/adr/0006-security-tool-placement.md)
+- [0007 — SAST/SCA tool selection: Bandit + pip-audit](docs/adr/0007-sast-sca-tool-selection.md)
 
 ## Possible Enhancements
 

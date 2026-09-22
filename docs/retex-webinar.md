@@ -69,6 +69,66 @@ sécurité n'a de valeur que si elle est **prouvée**, pas supposée. Le jugemen
 consisté à ignorer l'outil, mais à vérifier ce que l'outil disait avant de décider — avec des
 preuves reproductibles, pas une intuition.
 
+### 1.4 Le vrai blind spot : des rapports que personne ne regarde jamais
+
+**Le constat, posé en pleine construction du pipeline, pas après coup** : Gitleaks/Bandit/
+`pip-audit` **bloquent** la PR — impossible de les rater, visibles de force dans les Checks.
+Trivy (son rapport complet, au-delà de ce qui bloque) et surtout ZAP (entièrement
+informationnel, jamais bloquant) ne déposaient leurs résultats détaillés que dans un **artefact
+zip téléchargeable**, enterré dans Actions → le run → Artifacts.
+
+**La définition qu'on en a tirée, et qu'on assume comme fil rouge du webinaire** :
+
+> Le security theatre, ce n'est pas seulement un contrôle contournable ou un faux-positif
+> ignoré. C'est aussi **un outil qui tourne, produit un résultat réel, et n'influence
+> strictement rien** parce que personne ne le regarde jamais dans le flux normal. Le scan a eu
+> lieu ; la case "on fait du DAST" est cochée ; mais aucune décision n'en dépend jamais.
+
+Un scanner qui tourne pour la forme est aussi théâtral qu'un contrôle qu'on sait contourner —
+juste plus difficile à repérer, parce qu'en apparence, "l'outil est bien là et il tourne".
+
+**Pourquoi le format du rapport n'est pas un détail** : produire *un* rapport ne suffit pas s'il
+n'est lisible que par l'outil qui l'a généré — chaque intégration "rendre ça exploitable" doit
+alors être réinventée, outil par outil. **SARIF** (Static Analysis Results Interchange Format,
+standard OASIS, JSON) existe précisément pour éviter ça : un format d'échange commun que
+n'importe quel outil d'analyse peut émettre, et que n'importe quelle plateforme (GitHub Code
+Scanning, mais aussi des extensions VS Code, Azure DevOps, d'autres SIEM/dashboards sécu) sait
+consommer de la même façon. Un seul consommateur (Code Scanning) peut alors agréger les
+résultats de plusieurs outils différents, sans logique d'ingestion spécifique à chacun.
+
+Vérifié concrètement, tool par tool, plutôt que supposé — sur les 5 outils du pipeline :
+
+| Outil | SARIF natif ? |
+|---|---|
+| Gitleaks | ✅ oui (`--report-format sarif`) — non utilisé ici, puisqu'il bloque déjà directement la PR |
+| Trivy | ✅ oui (`format: sarif`) — c'est ce qui a rendu l'upload vers Code Scanning trivial |
+| Bandit | ❌ non (`csv, custom, html, json, screen, txt, xml, yaml` — pas de SARIF) |
+| pip-audit | ❌ non (`columns, json, cyclonedx-json, cyclonedx-xml, markdown` — pas de SARIF) |
+| ZAP (baseline) | ❌ non nativement — existe côté ZAP mais pas exposé simplement par l'action utilisée |
+
+C'est exactement ce tableau qui explique, très concrètement, pourquoi l'intégration Trivy a pris
+une action et quelques lignes, alors que ZAP a nécessité un compromis (résumé Markdown) plutôt
+qu'une vraie intégration Code Scanning — **le format de sortie de l'outil détermine directement
+la facilité avec laquelle ses résultats deviennent exploitables**, pas juste la volonté de les
+exposer.
+
+**La correction, à effort mesuré, pas en sur-ingénierie** :
+- **Trivy** : le rapport SARIF complet (pas juste ce qui bloque) est maintenant aussi envoyé
+  vers **GitHub Code Scanning** (onglet Security) — findings persistants, triables par
+  sévérité, avec un vrai cycle de vie (ouvert/corrigé/ignoré-justifié), pas juste un fichier
+  qu'il faut penser à aller chercher.
+- **ZAP** : son propre rapport Markdown est collé directement dans le **Job Summary** du run —
+  visible sans clic supplémentaire. Le SARIF/Code Scanning pour ZAP a été **délibérément
+  écarté** cette fois : `zap-baseline.py` ne produit pas nativement de SARIF, et les
+  contournements existants (convertisseur tiers non officiel, reconfiguration complète autour
+  de l'Automation Framework de ZAP) n'étaient pas vérifiables sans test réel avant mise en
+  prod — plutôt que de livrer une intégration à moitié testée, elle est documentée comme
+  amélioration future (`README.md` → Possible Enhancements).
+
+**Le point méthodologique qui en ressort** : corriger un blind spot de visibilité ne veut pas
+dire "tout intégrer à tout prix" — la version prudente (résumé lisible, pas de conversion de
+schéma non testée) vaut mieux qu'une intégration plus complète mais fragile.
+
 ---
 
 ## 2. Architecture & conventions — les choix (et ce qu'on a rejeté)
