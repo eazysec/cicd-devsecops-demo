@@ -5,7 +5,7 @@ description = "CI/CD & DevSecOps live conference demo application"
 requires-python = ">=3.12"
 dependencies = [
     "flask>=3.0,<4.0",
-    "gunicorn>=22.0,<23.0",
+    "gunicorn>=22.0,<27.0",
 ]
 
 [project.optional-dependencies]
