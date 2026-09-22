@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.1.1...cicd-devsecops-demo-v1.1.2) (2026-09-22)
+
+
+### Bug Fixes
+
+* dedupe push vs pull_request runs on the same branch in pr-validation ([fb13236](https://github.com/eazysec/cicd-devsecops-demo/commit/fb132363a0aacbaa3f36042c02afc6c6a1362322))
+
 ## [1.1.1](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.1.0...cicd-devsecops-demo-v1.1.1) (2026-09-22)
 
 
