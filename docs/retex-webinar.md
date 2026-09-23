@@ -129,6 +129,42 @@ exposer.
 dire "tout intégrer à tout prix" — la version prudente (résumé lisible, pas de conversion de
 schéma non testée) vaut mieux qu'une intégration plus complète mais fragile.
 
+### 1.5 Découpler cadence de scan et rigueur d'analyse : bonne architecture, nouveau risque de théâtre
+
+**La décision** : en ajoutant CodeQL en plus de Bandit pour le SAST Python, les deux outils ne
+tournent **pas** au même moment. Bandit — pattern-matching, quelques secondes — reste dans le gate
+de PR (`pr-validation.yml`), pour un feedback immédiat au développeur. CodeQL — analyse par flux
+de données (taint tracking), plus lente, plus coûteuse — tourne **après coup** : sur push vers
+`main`, et sur une planification hebdomadaire (`codeql.yml`). Jamais dans le chemin critique
+d'une PR.
+
+**Le sens de ce découplage** : la rigueur d'une analyse et la fréquence à laquelle elle peut
+tourner ne sont pas indépendantes en pratique — plus une analyse est profonde, plus elle est
+coûteuse, et un gate de PR doit rester rapide pour rester respecté (un gate qui prend dix minutes
+se contourne, se désactive, ou se subit en silence). Séparer les deux ne dégrade pas la sécurité :
+ça reconnaît que "bloquant sur chaque changement" et "aussi exhaustif que possible" sont deux
+exigences en tension, et qu'il vaut mieux les satisfaire chacune à l'endroit où elle a du sens
+plutôt que de forcer un seul outil à faire les deux mal.
+
+**Le risque, qu'il faut nommer plutôt que passer sous silence** : ce découpage reproduit,
+structurellement, exactement le blind spot du §1.4 — mais déplacé plutôt que résolu. Un outil qui
+tourne une fois par semaine, sans bloquer personne, et dont le résultat atterrit dans un onglet
+qu'il faut aller consulter volontairement, coche toutes les cases du security theatre tel qu'on
+l'a défini plus haut : *ça tourne, ça produit un résultat réel, et ça n'influence rien* si
+personne ne va le regarder entre deux runs hebdomadaires. Avoir CodeQL dans le pipeline peut
+même **aggraver** la fausse impression de sécurité — "on a du SAST avancé" — si son exécution
+n'est jamais suivie d'une lecture réelle des résultats.
+
+**Ce qu'on en tire, honnêtement, sans prétendre avoir un dispositif qui referme complètement le
+risque** : uploader vers **GitHub Code Scanning** (même onglet que Trivy, §1.4) aide — un
+répertoire central avec un cycle de vie (ouvert/corrigé/ignoré-justifié) est déjà mieux qu'un
+artefact zip enterré — mais un dashboard consultable n'est pas la même chose qu'un dashboard
+consulté. Le découplage cadence/rigueur est une bonne architecture **à condition** qu'il existe,
+à côté, une habitude réelle de revue (une revue hebdomadaire nommée, un budget de temps dédié,
+quelqu'un dont c'est explicitement le rôle) — sans quoi on n'a fait que déplacer le blind spot du
+§1.4 d'un artefact zip vers un onglet Code Scanning, avec une meilleure vitrine mais le même trou.
+C'est un point volontairement laissé ouvert dans cette démo plutôt que déclaré résolu.
+
 ---
 
 ## 2. Architecture & conventions — les choix (et ce qu'on a rejeté)
