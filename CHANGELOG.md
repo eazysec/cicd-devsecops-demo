@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.3.0...cicd-devsecops-demo-v1.4.0) (2026-09-23)
+
+
+### Features
+
+* add CodeQL as a decoupled, non-blocking SAST pass ([e939a47](https://github.com/eazysec/cicd-devsecops-demo/commit/e939a47364a922c7e047b8faf0d54b70647d24d2))
+* add CodeQL as a decoupled, non-blocking SAST pass ([af0a78b](https://github.com/eazysec/cicd-devsecops-demo/commit/af0a78bf69bc3b52cbdfb98f0261191d2adeafce))
+
 ## [1.3.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.2.0...cicd-devsecops-demo-v1.3.0) (2026-09-23)
 
 
