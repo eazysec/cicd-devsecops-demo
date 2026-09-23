@@ -1,5 +1,12 @@
 # Quickstart: Validate the Feature End-to-End
 
+Scope: local development validation only — running the app, the test suite, and the individual
+demo scenarios in isolation on your own machine. For the actual live-conference sequence (exact
+commands, timing, what to say at each step), see
+[`docs/roadmapLiveWebinaire.md`](../../docs/roadmapLiveWebinaire.md) instead; this file predates
+it and the two now overlap in places, this one stays the lower-level "does each piece work"
+reference.
+
 Prerequisites: Python 3.13, Docker, (optionally) AWS CLI configured for manual deploy testing.
 
 ## 1. Local app
