@@ -96,12 +96,13 @@ Scanning, mais aussi des extensions VS Code, Azure DevOps, d'autres SIEM/dashboa
 consommer de la même façon. Un seul consommateur (Code Scanning) peut alors agréger les
 résultats de plusieurs outils différents, sans logique d'ingestion spécifique à chacun.
 
-Vérifié concrètement, tool par tool, plutôt que supposé — sur les 5 outils du pipeline :
+Vérifié concrètement, tool par tool, plutôt que supposé — sur les 6 outils du pipeline :
 
 | Outil | SARIF natif ? |
 |---|---|
 | Gitleaks | ✅ oui (`--report-format sarif`) — non utilisé ici, puisqu'il bloque déjà directement la PR |
 | Trivy | ✅ oui (`format: sarif`) — c'est ce qui a rendu l'upload vers Code Scanning trivial |
+| CodeQL | ✅ oui — SARIF est son format natif, `github/codeql-action` l'uploade directement, aucune conversion nécessaire (ajouté après ce constat initial — voir §1.5 et ADR 0008) |
 | Bandit | ❌ non (`csv, custom, html, json, screen, txt, xml, yaml` — pas de SARIF) |
 | pip-audit | ❌ non (`columns, json, cyclonedx-json, cyclonedx-xml, markdown` — pas de SARIF) |
 | ZAP (baseline) | ❌ non nativement — existe côté ZAP mais pas exposé simplement par l'action utilisée |
