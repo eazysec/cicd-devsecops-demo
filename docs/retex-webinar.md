@@ -49,6 +49,13 @@ Push Protection (avant même que le code atteigne le repo) + Gitleaks en CI (por
 sans GitHub) — deux couches indépendantes, la deuxième existe justement pour les environnements
 où la première n'est pas disponible.
 
+**Rebond n°2, plus subtil** : en *racontant* cet incident dans le journal de suivi du projet, la
+valeur littérale du secret a été recopiée telle quelle dans le texte narratif — deuxième détection
+Gitleaks, cette fois dans un fichier qui ne fait que *décrire* l'incident. La leçon ne s'arrête
+donc pas à "ne jamais committer un secret" : elle inclut "ne jamais recopier sa valeur, même pour
+la documenter après coup" — reformuler l'incident sans jamais reproduire la donnée sensible
+elle-même, aussi tentant que ce soit pour la traçabilité.
+
 ### 1.3 Une vraie vulnérabilité Trivy — investiguée avant d'être excusée
 
 **Le fait** : le premier vrai build a échoué le gate Trivy sur deux CVE HIGH, avec correctif
