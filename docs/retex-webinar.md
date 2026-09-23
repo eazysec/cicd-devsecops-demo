@@ -196,6 +196,20 @@ Bandit/`pip-audit` inutilement sur un changement de documentation. Le découpage
 caractère obligatoire/conditionnel, avec "Security" et "Quality" simplement mentionnés dans le nom
 du job pour le narratif, sans sacrifier la distinction structurelle.
 
+**Ce que ça garantit concrètement, pas juste une préférence d'organisation** : dans
+`pr-validation.yml`, les gates obligatoires (Gitleaks, Ruff) ne lisent **jamais** la sortie du job
+`classify` — ils sont câblés sans condition dans le YAML, pendant que les gates conditionnels
+(tests, Bandit, `pip-audit`) lisent `needs.classify.outputs.change_type` pour décider de tourner
+ou non. La conséquence est une garantie par construction : un bug dans
+`scripts/classify_change.py` (mal classer un changement en `docs_only` alors qu'il touche du code)
+peut au pire faire tourner des checks inutiles ou en sauter d'utiles — jamais désactiver le scan de
+secrets. Si Gitleaks avait été écrit avec un `if: needs.classify.outputs.change_type !=
+'docs_only'` comme les autres, exactement le même bug de classification serait devenu un
+**contournement de sécurité silencieux**, pas juste un désagrément de couverture de tests. La
+leçon transférable : toute logique d'optimisation/conditionnelle (classification de changement,
+cache, sélection de tests) doit rester structurellement en dehors du chemin d'exécution d'un gate
+de sécurité non-négociable — jamais son déclencheur.
+
 ### 2.3 Pourquoi pas `BREAKING CHANGE:` pour un correctif de sécurité
 
 **La tentation** : en préparant un scénario de démo DAST (ZAP détecte des en-têtes de sécurité
