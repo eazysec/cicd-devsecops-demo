@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.2.0...cicd-devsecops-demo-v1.3.0) (2026-09-23)
+
+
+### Features
+
+* upload Trivy SARIF to GitHub Code Scanning, summarize ZAP findi… ([ee2bdc0](https://github.com/eazysec/cicd-devsecops-demo/commit/ee2bdc03d8530e5078f20c0808689ad33df05ee2))
+* upload Trivy SARIF to GitHub Code Scanning, summarize ZAP findings in-run ([9540e6c](https://github.com/eazysec/cicd-devsecops-demo/commit/9540e6ccf5df05898591f2f7b4bbe02bdc2e4757))
+
 ## [1.2.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.1.2...cicd-devsecops-demo-v1.2.0) (2026-09-22)
 
 
