@@ -322,7 +322,10 @@ rebuilds — always redeploys a previously built digest. Full design: [ADR
 A 10–15 minute primary path through Scenarios A–D (spec.md), with Scenario E (rollback) as an
 explicitly optional/backup beat — see spec.md Assumptions for why rollback isn't baked into the
 timed critical path. Prepare beforehand: `main` already at a tagged `v1.0.0`, a clean working
-tree, and staging/production already deployed and healthy so the "before" state is visible.
+tree, and staging/production already deployed and healthy so the "before" state is visible. The
+table below is the condensed, public version of this sequence — see
+[`docs/roadmapLiveWebinaire.md`](docs/roadmapLiveWebinaire.md) for the exact commands, clicks, and
+timing budget used to actually run it live.
 
 | # | What I show | Concept | Command | Expected result | If it fails |
 |---|---|---|---|---|---|
