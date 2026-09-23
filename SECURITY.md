@@ -108,6 +108,11 @@ to GitHub Code Scanning alongside Trivy's SARIF report, and never blocks a merge
 rigor is a deliberate architectural choice, and the security-theatre risk it introduces if nobody
 actually reviews the results between scheduled runs.
 
+[docs/codeql-demo-vulns.md](docs/codeql-demo-vulns.md) catalogs illustrative vulnerabilities
+(CodeQL catches, Bandit misses) for demo purposes — same discipline as the fake-secret demo below:
+a permanent, inert recipe, applied only to a disposable branch that is run via `workflow_dispatch`
+and deleted afterward, never merged.
+
 ## Dynamic analysis (DAST) policy
 
 [OWASP ZAP](https://www.zaproxy.org/) runs a baseline (passive) scan against the `staging`
