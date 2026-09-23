@@ -276,6 +276,9 @@ Trivy's full SARIF report and CodeQL's findings both uploaded to **GitHub Code S
 tab), not just kept in a build artifact nobody opens — free for this public repo, would need the
 paid GitHub Code Security add-on on a private one; every GitHub Action pinned by commit SHA;
 least-privilege, OIDC-based AWS access; Dependabot for `pip`/`docker`/`github-actions`.
+[`docs/codeql-demo-vulns.md`](docs/codeql-demo-vulns.md) catalogs illustrative vulnerabilities for
+demonstrating the CodeQL-vs-Bandit gap live, with the safe demo procedure (disposable branch, never
+merged).
 
 ## Secrets and variables
 
