@@ -50,6 +50,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write # to upload the Trivy SARIF report to Code Scanning
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:
@@ -98,13 +99,26 @@ jobs:
           severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
           exit-code: "0"
 
-      - name: Upload Trivy SARIF report
+      - name: Upload Trivy SARIF report (build artifact)
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: trivy-results-${{ needs.release-please.outputs.version }}
           path: trivy-results.sarif
           retention-days: 30
+
+      # Findings become persistent, triageable entries in the repo's Security tab (severity,
+      # open/fixed/dismissed lifecycle) instead of only existing in a zip nobody opens unless
+      # something already failed elsewhere — the actual gap flagged in docs/retex-webinar.md:
+      # a scanner that runs but never surfaces its output anywhere a human would look is its
+      # own kind of security theatre. Public-repo only for now — GitHub Code Scanning requires
+      # the paid GitHub Code Security add-on for private repos (see SECURITY.md).
+      - name: Upload Trivy SARIF report to Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-image-scan
 
       # Security Gate (D5 policy): only fixable HIGH/CRITICAL findings block promotion — see
       # docs/adr and research.md#d5-vulnerability-scanning-policy-trivy for why an unfixable or
