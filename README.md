@@ -267,8 +267,10 @@ green pipeline flaky — see [research.md
 D5](specs/001-cicd-devsecops-demo/research.md#d5-vulnerability-scanning-policy-trivy)); OWASP ZAP
 baseline scan (DAST) against staging after every successful deploy, informational rather than
 blocking ([research.md D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category));
-every GitHub Action pinned by commit SHA; least-privilege, OIDC-based AWS access; Dependabot for
-`pip`/`docker`/`github-actions`.
+Trivy's full SARIF report also uploaded to **GitHub Code Scanning** (Security tab), not just kept
+in a build artifact nobody opens — free for this public repo, would need the paid GitHub Code
+Security add-on on a private one; every GitHub Action pinned by commit SHA; least-privilege,
+OIDC-based AWS access; Dependabot for `pip`/`docker`/`github-actions`.
 
 ## Secrets and variables
 
@@ -360,7 +362,7 @@ docker pull ghcr.io/zaproxy/zaproxy:2.17.0
 | New CVE published the morning of the talk | Only fixable HIGH/CRITICAL blocks; build the demo's exact artifact and verify it the day before, don't rebuild live ([research.md D5](specs/001-cicd-devsecops-demo/research.md#d5-vulnerability-scanning-policy-trivy)) |
 | Free-tier compute sleeps/cold-starts mid-talk | Always-on EC2 instances, no scale-to-zero platform ([ADR 0001](docs/adr/0001-deployment-platform.md)) |
 | GitHub/registry/AWS unreachable during the talk | [Emergency Demo Plan](#-emergency-demo-plan) reproduces the pre-deploy chain fully offline |
-| GitHub plan gates a needed feature (e.g. required reviewers on Environments) | Repository is public, confirmed to unlock this on the free plan (spec.md Assumptions); re-verify if ever made private |
+| GitHub plan gates a needed feature (e.g. required reviewers on Environments, Code Scanning) | Repository is public, confirmed to unlock these on the free plan (spec.md Assumptions); Code Scanning specifically requires the paid GitHub Code Security add-on ($30/active committer/month) on a private repo — re-verify if this repository is ever made private |
 | Rate limiting on a public runner/registry | Traffic volume for a conference demo is trivially within free limits; not mitigated further |
 | DNS/network flakiness for `$APP_URL` | Elastic IP / stable DNS per `docs/aws-setup.md` step 4; bookmark URLs before the talk |
 | A demo branch/PR used for rehearsal pollutes `main`'s history | Demo branches (docs-only, failing-test, fake-secret) are disposable and never merged — delete after rehearsal |
@@ -392,3 +394,15 @@ justify the setup cost in a two-endpoint conference demo (constitution Principle
   see [research.md D7](specs/001-cicd-devsecops-demo/research.md#d7-cpu-architecture).
 - **Canary/traffic-split promotion** instead of all-or-nothing cutover — not available on a plain
   Docker-on-EC2 setup without adding a load balancer/reverse proxy layer.
+- **ZAP findings uploaded to Code Scanning too** (Trivy's already are). `zap-baseline.py` doesn't
+  natively emit SARIF; the available workarounds (an unofficial third-party converter, or
+  reconfiguring the scan around ZAP's own Automation Framework instead of the simple baseline
+  action) were judged too fragile to ship without testing them end-to-end first — a concise
+  Markdown summary in the Job Summary was implemented instead as the low-risk version of "make
+  findings visible somewhere a human will actually look" (see `docs/retex-webinar.md`).
+- **Org-wide reusable security workflows.** `deploy.yml` is already a reusable workflow
+  (`workflow_call`); extracting the Gitleaks/Bandit/pip-audit/Trivy/ZAP steps the same way, and
+  publishing them from an organization-level `.github` repo, is the standard GitHub-native
+  pattern for other teams to reuse this pipeline's security gates — GitHub has no single
+  community project as centralized as GitLab's `to-be-continuous` for this; the reusable-workflow
+  + org `.github` repo convention is the closest native equivalent.
