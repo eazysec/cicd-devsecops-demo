@@ -97,8 +97,9 @@ fail live.
 - Duplication between workflows is resolved via reusable workflows/composite actions where it
   measurably reduces maintenance burden, not preemptively.
 - A local, GitHub-independent path (`scripts/demo-local.sh` and friends) must be able to
-  demonstrate: lint → tests → secret scan → Docker build → (Trivy if available) → run →
-  health check → smoke test, as the conference's Plan B.
+  demonstrate: lint → tests → SAST → dependency scan → secret scan → Docker build → (Trivy if
+  available) → run → health check → smoke test → (DAST if available), as the conference's Plan B.
+  Optional/network-dependent tools degrade to a stated skip, never a silent gap.
 
 ## Governance
 

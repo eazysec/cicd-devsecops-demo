@@ -146,6 +146,7 @@ checks and rule configuration on `main` (manual GitHub setup step).
 | `push` to a non-`main` branch | `pr-validation.yml` | Fast feedback: same gates as a PR |
 | `pull_request` → `main` | `pr-validation.yml` | Quality + security gates, required to merge |
 | `push`/merge to `main` | `release.yml` | Release Please → build once → scan → staging → production |
+| `push` to `main`, weekly schedule, or `workflow_dispatch` | `codeql.yml` | CodeQL SAST pass, deep but deliberately non-blocking (never on a PR) |
 | `workflow_dispatch` on `deploy.yml` | `deploy.yml` | Manual promote/redeploy of a named digest |
 | `workflow_dispatch` on `rollback.yml` | `rollback.yml` | Resolve (or accept) a digest and redeploy it |
 
@@ -267,10 +268,14 @@ green pipeline flaky — see [research.md
 D5](specs/001-cicd-devsecops-demo/research.md#d5-vulnerability-scanning-policy-trivy)); OWASP ZAP
 baseline scan (DAST) against staging after every successful deploy, informational rather than
 blocking ([research.md D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category));
-Trivy's full SARIF report also uploaded to **GitHub Code Scanning** (Security tab), not just kept
-in a build artifact nobody opens — free for this public repo, would need the paid GitHub Code
-Security add-on on a private one; every GitHub Action pinned by commit SHA; least-privilege,
-OIDC-based AWS access; Dependabot for `pip`/`docker`/`github-actions`.
+**CodeQL** as a second, deeper SAST pass — dataflow/taint-tracking analysis, deliberately decoupled
+from the fast PR gate: runs on push to `main` and weekly, never on a PR
+([ADR 0008](docs/adr/0008-codeql-integration.md),
+[research.md D11](specs/001-cicd-devsecops-demo/research.md#d11-adding-codeql-decoupling-scan-cadence-from-analysis-rigor));
+Trivy's full SARIF report and CodeQL's findings both uploaded to **GitHub Code Scanning** (Security
+tab), not just kept in a build artifact nobody opens — free for this public repo, would need the
+paid GitHub Code Security add-on on a private one; every GitHub Action pinned by commit SHA;
+least-privilege, OIDC-based AWS access; Dependabot for `pip`/`docker`/`github-actions`.
 
 ## Secrets and variables
 
@@ -381,6 +386,7 @@ Short, focused ADRs for the decisions worth defending in front of an experienced
 - [0005 — Rollback strategy](docs/adr/0005-rollback-strategy.md)
 - [0006 — Security tool placement: co-located by pipeline stage](docs/adr/0006-security-tool-placement.md)
 - [0007 — SAST/SCA tool selection: Bandit + pip-audit](docs/adr/0007-sast-sca-tool-selection.md)
+- [0008 — CodeQL integration: decoupled cadence, not a PR gate](docs/adr/0008-codeql-integration.md)
 
 ## Possible Enhancements
 
@@ -401,7 +407,7 @@ justify the setup cost in a two-endpoint conference demo (constitution Principle
   Markdown summary in the Job Summary was implemented instead as the low-risk version of "make
   findings visible somewhere a human will actually look" (see `docs/retex-webinar.md`).
 - **Org-wide reusable security workflows.** `deploy.yml` is already a reusable workflow
-  (`workflow_call`); extracting the Gitleaks/Bandit/pip-audit/Trivy/ZAP steps the same way, and
+  (`workflow_call`); extracting the Gitleaks/Bandit/pip-audit/Trivy/ZAP/CodeQL steps the same way, and
   publishing them from an organization-level `.github` repo, is the standard GitHub-native
   pattern for other teams to reuse this pipeline's security gates — GitHub has no single
   community project as centralized as GitLab's `to-be-continuous` for this; the reusable-workflow

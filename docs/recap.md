@@ -8,23 +8,34 @@ prod de la démo elle-même.
 Dites-moi simplement ce que vous avez fait/testé et je coche/mets à jour ce fichier en
 conséquence.
 
-**Dernière mise à jour** : 2026-09-22 (génération initiale, rien n'est encore configuré côté
-AWS/GitHub ni committé dans git).
+**Dernière mise à jour** : 2026-09-23. Ce fichier était resté figé au 2026-09-22 (génération
+initiale) alors que la configuration AWS/GitHub, plusieurs cycles de release réels, et l'ajout
+de CodeQL/ADR 0008 ont eu lieu depuis — sections "Validation", "Configuration manuelle restante"
+et "Conference checklist" corrigées ci-dessous pour refléter l'état actuel. Le détail de ce qui
+s'est passé entre-temps reste dans le Journal d'avancement plus bas (dernière entrée : plafond de
+permissions des workflows réutilisables) — les épisodes plus récents (correction du format `sub`
+OIDC, licence `gitleaks-action`, inversion `APP_URL`, intégration Code Scanning, ajout CodeQL) ne
+sont pour l'instant tracés que dans l'historique git et la conversation, pas encore reportés ici
+entrée par entrée.
 
 ---
 
 ## Architecture retenue
 
 Spec-Kit workflow complet exécuté dans `specs/001-cicd-devsecops-demo/` : constitution → spec →
-plan/research (8 ADR "D1–D8") → tasks (60 tâches) → implémentation. Repo `cicd-devsecops-demo`
-confirmé (remote `github.com/eazysec/cicd-devsecops-demo`, **organisation** publique).
+plan/research (research.md compte maintenant D1–D11 ; 8 ADR, 0001–0008) → tasks (60 tâches
+initiales) → implémentation. Repo `cicd-devsecops-demo` confirmé (remote
+`github.com/eazysec/cicd-devsecops-demo`, **organisation** publique).
 
 - **App** : Flask + Gunicorn, `GET /` (page de statut) + `GET /health` (JSON), respecte `PORT`.
 - **Pipeline dynamique** : `scripts/classify_change.py` (testé unitairement) classe chaque
   changement (`docs_only` / `application` / `pipeline_infra`) ; les gates obligatoires (secret
   scan, lint) tournent toujours, sans jamais consulter la classification.
-- **Sécurité** : Gitleaks (CLI directe, voir Amendements), Trivy (bloque seulement HIGH/CRITICAL
-  **avec correctif dispo**), toutes les Actions GitHub épinglées par SHA complet.
+- **Sécurité** : Gitleaks (CLI directe, voir Amendements, bloquant sur toute PR), Bandit + pip-audit
+  (SAST/SCA, conditionnels comme les tests, dans `pr-validation.yml`), Trivy (bloque seulement
+  HIGH/CRITICAL **avec correctif dispo**, SARIF complet aussi envoyé vers Code Scanning), ZAP
+  (DAST staging, informationnel), CodeQL (SAST approfondi, découplé du gate PR — push `main` +
+  hebdomadaire, voir ADR 0008), toutes les Actions GitHub épinglées par SHA complet.
 - **Build once / promote** : un seul job (`release.yml → build-scan-publish`) construit et pousse
   l'image ; le digest est réutilisé tel quel pour staging puis production (`deploy.yml`
   réutilisable).
@@ -49,49 +60,63 @@ confirmé (remote `github.com/eazysec/cicd-devsecops-demo`, **organisation** pub
 
 ## Validation
 
-État à la fin de la génération initiale (2026-09-22) :
+État initial (2026-09-22, sandbox sans Docker) vs. état réel confirmé depuis, en conditions
+réelles (poste de l'utilisateur + GitHub Actions + AWS) :
 
 ```
-Lint (Ruff)         PASS   — 0 erreur
-Unit tests          PASS   — 28/28, coverage 87.5% (seuil 80%)
+Lint (Ruff)         PASS   — confirmé en CI à chaque run
+Unit tests          PASS   — confirmé en CI à chaque run
 Coverage            PASS
-Gitleaks            PASS   — repo propre ; scénario faux-secret vérifié déclenchant, puis nettoyage vérifié propre
-Docker build        NOT VERIFIED — pas de démon Docker dans le sandbox de génération
-Container run       NOT VERIFIED — idem
-Health check        PARTIEL — logique validée via `flask run` local + scripts/healthcheck.sh réels (pas via conteneur)
-Smoke tests          PARTIEL — idem, via scripts/smoke-test.sh réel contre l'app locale
-Trivy                PARTIEL — `trivy config` (Dockerfile) : 0 misconfiguration ; scan d'image impossible sans Docker
-GitHub Actions       PASS   — actionlint + validation YAML sur les 4 workflows, syntaxe et permissions vérifiées
-Staging              NOT VERIFIED — nécessite l'infra AWS réelle
-Production           NOT VERIFIED — idem
-Rollback              PASS (logique) — `resolve_previous_digest.py` unit-testé (5 cas) ; bout-en-bout NOT VERIFIED (nécessite AWS+GitHub réels)
+Gitleaks            PASS   — confirmé en conditions réelles : faux secret généré dynamiquement a
+                              bloqué à la fois Push Protection GitHub et le job Gitleaks (voir
+                              docs/retex-webinar.md §1.1/§1.2)
+Docker build        PASS   — confirmé hors sandbox (terminal natif, Docker installé sur la machine)
+Container run       PASS   — idem
+Health check        PASS   — confirmé via conteneur réel + déploiements staging/production réels
+Smoke tests         PASS   — idem
+Trivy                PASS   — scan d'image réel confirmé ; un cas réel de CVE HIGH sur du code
+                              vendorisé dans pip a été investigué et documenté (.trivyignore,
+                              docs/retex-webinar.md §1.3) ; SARIF complet confirmé visible dans
+                              GitHub Code Scanning
+GitHub Actions       PASS   — 5 workflows (pr-validation, release, deploy, rollback, codeql),
+                              actionlint + exécutions réelles multiples confirmées
+Staging              PASS   — plusieurs cycles de déploiement réels confirmés (au moins jusqu'à
+                              la release 1.3.0), ZAP DAST confirmé fonctionnel contre cette instance
+Production           PASS   — au moins une promotion staging → production réelle confirmée,
+                              approbation manuelle (required reviewer) exercée
+Rollback              PASS (logique unit-testée) ; bout-en-bout en conditions réelles : à
+                              reconfirmer avec l'utilisateur, pas explicitement rejoué depuis
+CodeQL                NOT VERIFIED — workflow ajouté le 2026-09-23 (`feat/codeql-integration`,
+                              pas encore mergé), pas encore exécuté en conditions réelles
 ```
 
-*(Mettre à jour au fur et à mesure : quand vous testez `docker build`/`docker run` chez vous,
-dites-le-moi et je passe ces lignes en PASS/FAIL ici.)*
+*(Mettre à jour au fur et à mesure : dites-moi ce que vous testez/observez et je corrige ces
+lignes en conséquence — en particulier pour confirmer/infirmer le statut Rollback ci-dessus.)*
 
 ## Configuration manuelle restante
 
-- [x] **GitHub** : appliquer `docs/branch-protection.md` (checks requis sur `main`) — à reconfirmer
-      (annoncé "probablement fait" mais pas revérifié en détail)
-- [ ] **GitHub** : créer les Environments `staging`/`production` avec leurs variables
-      (`docs/github-environments-setup.md`) — en cours (Phase 4)
-- [ ] **GitHub** : approbateur requis configuré sur `production`
-- [ ] **GitHub** : rendre le package GHCR public après le premier build — bloqué tant qu'aucune
-      image n'a été poussée (attend le merge de la 1ère Release PR)
+- [x] **GitHub** : `docs/branch-protection.md` appliqué et confirmé — PR bloquées puis mergées
+      avec succès à plusieurs reprises, noms de checks vérifiés cohérents (y compris après le
+      renommage du job de test pour Bandit/pip-audit)
+- [x] **GitHub** : Environments `staging`/`production` créés avec leurs variables
+      (`docs/github-environments-setup.md`) — confirmé, déploiements réels réussis sur les deux
+- [x] **GitHub** : approbateur requis configuré sur `production` — confirmé, flux "Review
+      deployments" exercé en conditions réelles
+- [x] **GitHub** : package GHCR public — confirmé, `docker pull` réel réussi depuis l'extérieur
 - [x] **AWS** : provisionner les 2 EC2 (`docs/aws-setup.md`) — confirmé, `docker --version` testé OK
-- [x] **AWS** : provider OIDC créé
-- [x] **AWS** : les 2 rôles IAM scopés créés (staging, production)
+- [x] **AWS** : provider OIDC créé — confirmé fonctionnel (après correction du format `sub` claim,
+      voir docs/retex-webinar.md §3.2)
+- [x] **AWS** : les 2 rôles IAM scopés créés (staging, production) — confirmés fonctionnels
 
 ## Secrets et variables (noms uniquement)
 
 | Nom | Type | Portée | Configuré ? |
 |---|---|---|---|
 | `GITHUB_TOKEN` | ambiant | tous les jobs | n/a (automatique) |
-| `AWS_ROLE_ARN` | variable d'environnement | `staging`, `production` | [ ] |
-| `AWS_REGION` | variable d'environnement | `staging`, `production` | [ ] |
-| `EC2_INSTANCE_ID` | variable d'environnement | `staging`, `production` | [ ] |
-| `APP_URL` | variable d'environnement | `staging`, `production` | [ ] |
+| `AWS_ROLE_ARN` | variable d'environnement | `staging`, `production` | [x] confirmé fonctionnel |
+| `AWS_REGION` | variable d'environnement | `staging`, `production` | [x] confirmé fonctionnel |
+| `EC2_INSTANCE_ID` | variable d'environnement | `staging`, `production` | [x] confirmé fonctionnel |
+| `APP_URL` | variable d'environnement | `staging`, `production` | [x] confirmé fonctionnel — une inversion staging/production a été trouvée et corrigée (docs/retex-webinar.md §3.5) |
 
 Aucune clé AWS statique nulle part (OIDC uniquement), aucun credential registry sur les hôtes
 (GHCR public).
@@ -100,22 +125,27 @@ Aucune clé AWS statique nulle part (OIDC uniquement), aucun credential registry
 
 ```
 [x] Repository cicd-devsecops-demo prêt (code, tests, workflows, docs)
-[ ] Branch protection / ruleset configuré           → docs/branch-protection.md
-[ ] Checks obligatoires configurés                  → idem
-[ ] GitHub Environments configurés                  → docs/github-environments-setup.md
-[x] Registry configuré (GHCR, à rendre public après 1er push)
-[ ] Staging configuré                               → docs/aws-setup.md
-[ ] Production configurée                           → idem
-[ ] Secrets configurés
-[ ] v1.0.0 déployée
-[ ] PR failure testée (Scénario B)
-[x] Gitleaks failure testé avec faux secret (validé localement, valeur corrigée)
-[ ] Documentation-only skip testé en conditions réelles GitHub
-[ ] Release 1.0.1 testée
-[ ] Promotion staging → production testée
-[ ] Digest identique staging / production vérifié
-[ ] Rollback testé (bout-en-bout ; logique déjà unit-testée)
-[x] Plan B local testé (scripts/demo-local.sh, s'arrête proprement sans Docker)
+[x] Branch protection / ruleset configuré           → docs/branch-protection.md
+[x] Checks obligatoires configurés                  → idem
+[x] GitHub Environments configurés                  → docs/github-environments-setup.md
+[x] Registry configuré (GHCR, public, pull réel confirmé)
+[x] Staging configuré                               → docs/aws-setup.md
+[x] Production configurée                           → idem
+[x] Secrets configurés
+[x] v1.0.0+ déployée (releases réelles au-delà de 1.0.0 confirmées, jusqu'à ~1.3.0)
+[ ] PR failure testée (Scénario B) — pas explicitement confirmé comme répétition dédiée
+[x] Gitleaks failure testé avec faux secret — confirmé en conditions réelles (Push Protection +
+    Gitleaks CI, pas seulement en local)
+[ ] Documentation-only skip testé en conditions réelles GitHub — à confirmer
+[x] Release testée (plusieurs cycles réels au-delà de 1.0.1)
+[x] Promotion staging → production testée — confirmée en conditions réelles
+[x] Digest identique staging / production — mécaniquement garanti par l'architecture build-once
+    (même digest passé aux deux appels de deploy.yml), non re-vérifié manuellement outil en main
+[ ] Rollback testé (bout-en-bout ; logique déjà unit-testée) — à reconfirmer avec l'utilisateur
+[x] Plan B local testé (scripts/demo-local.sh, confirmé fonctionnel hors sandbox)
+[ ] CodeQL testé en conditions réelles — workflow ajouté 2026-09-23, PR pas encore mergée
+[ ] `fix/security-headers` : PR prête pour la démo live — préparée, doit rester **non mergée**
+    jusqu'à la conférence (technique "flawless demo")
 ```
 
 ## Commandes de conférence (dans l'ordre)
