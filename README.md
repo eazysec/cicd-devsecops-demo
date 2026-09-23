@@ -51,22 +51,26 @@ below.
 ```mermaid
 flowchart TD
     Dev["👤 Developer"] --> Branch["Short-lived branch\nfix/feat-xyz"]
+    Branch -.->|chosen now, read later| CommitType["📝 Conventional Commit\nfix: / feat: / !\n→ PATCH / MINOR / MAJOR"]
+    CommitType -.-> RP
     Branch -->|push| FastFeedback["pr-validation.yml\nfast feedback (lint, tests)"]
     Branch -->|open PR| PR["Pull Request → main"]
-    PR --> Gates["pr-validation.yml\nSecurity + Quality Gates\n(Gitleaks, Ruff, pytest+cov)"]
+    PR --> Gates["pr-validation.yml\nSecurity + Quality Gates\n(Gitleaks, Ruff, pytest+cov,\nBandit, pip-audit)"]
     Gates -->|all required gates pass| Merge["Merge to main"]
     Gates -->|any required gate fails| Blocked["❌ Merge blocked"]
     Merge --> Main["main branch"]
     Main --> RP["Release Please\n(release.yml)"]
-    RP -->|Conventional Commits\naccumulated| ReleasePR["Release PR\nchore(main): release X.Y.Z"]
+    RP -->|reads accumulated\ncommit types| ReleasePR["Release PR\nchore(main): release X.Y.Z"]
     ReleasePR -->|merge| Release["Release created\n(tag + GitHub Release)"]
     Release --> BuildOnce["🔨 Build Once\ndocker build + push (GHCR)"]
     BuildOnce --> Scan["🔍 Trivy Scan\n(HIGH/CRITICAL + fix available blocks)"]
     Scan -->|pass| Registry["📦 GHCR\nimmutable digest"]
     Scan -->|fail| ScanBlocked["❌ Promotion blocked"]
+    Scan -.->|full SARIF, always| CodeScanning["📊 GitHub Code Scanning"]
     Registry --> Staging["🚀 Deploy: staging\n(same digest)"]
     Staging --> VerifyStaging["Health check + Smoke test"]
     VerifyStaging -->|pass| PromotionGate["✅ Promotion Gate\n(production required reviewer)"]
+    VerifyStaging -->|pass| ZAP["🕵️ ZAP DAST scan\n(informational, non-blocking)"]
     VerifyStaging -->|fail| StagingFail["❌ Stop — production never touched"]
     PromotionGate --> Production["🚀 Deploy: production\n(PROMOTE SAME digest, no rebuild)"]
     Production --> VerifyProd["Health check + Smoke test"]
@@ -74,6 +78,9 @@ flowchart TD
     VerifyProd -->|fail| Rollback["↩️ Automatic Rollback\nprevious known-good digest"]
     Rollback --> RollbackVerify["Health check"]
     RollbackVerify --> Restored["✅ Production restored"]
+
+    Main -.->|push + weekly, never blocks| CodeQL["🔎 CodeQL\n(SAST, dataflow analysis)\ninformational"]
+    CodeQL -.-> CodeScanning
 ```
 
 (Source: [`docs/diagrams/pipeline.mmd`](docs/diagrams/pipeline.mmd); the dynamic/policy diagram
