@@ -74,6 +74,13 @@ the base image) go in `.trivyignore`, one CVE per line, each with a reviewer, a 
 re-review date — added via normal PR review, never by the introducing change's own author acting
 alone (the same non-bypass principle as secret scanning).
 
+The full-severity SARIF report (everything, not just what blocks) is uploaded to **GitHub Code
+Scanning** (Security tab), not just kept as a build artifact — a scanner whose output only exists
+in a zip nobody opens unless something already failed elsewhere is its own kind of security
+theatre (see `docs/retex-webinar.md`). Free for this repository (public); a private repo would
+need the paid GitHub Code Security add-on for this same feature — see [GitHub's Advanced Security
+billing docs](https://docs.github.com/en/billing/concepts/product-billing/github-advanced-security).
+
 ## Static analysis and dependency scanning policy (SAST/SCA)
 
 Every push/PR touching application code runs [Bandit](https://bandit.readthedocs.io/) (SAST) and
@@ -97,12 +104,18 @@ despite auditing overlapping ground — they have different, complementary blind
 [OWASP ZAP](https://www.zaproxy.org/) runs a baseline (passive) scan against the `staging`
 environment after every successful deploy that passes its health check and smoke test —
 `environment: staging` only, never against `production` directly. Deliberately **informational**,
-not a blocking gate: results land in a build artifact (`zap-baseline-report`), not an
-auto-failed job. See [research.md
+not a blocking gate: results land in a build artifact (`zap-baseline-report`) and a concise
+summary in the run's Job Summary, not an auto-failed job. See [research.md
 D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category)
 for the reasoning — DAST findings tend to need more contextual human judgment than a
 CVE-with-a-known-fix does, which is exactly the "limits of automation" this project tries to
 demonstrate honestly rather than force into a binary pass/fail it doesn't fit well.
+
+**Not yet uploaded to Code Scanning**, unlike Trivy: `zap-baseline.py` doesn't natively emit
+SARIF, and the available workarounds (an unofficial third-party converter, or reconfiguring the
+scan to use ZAP's own Automation Framework instead of the simple baseline action) were judged too
+fragile to ship without being able to test them end-to-end first. Tracked in **Possible
+Enhancements** below rather than attempted half-verified.
 
 ## Dependency policy
 
