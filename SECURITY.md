@@ -99,6 +99,15 @@ therefore cannot block this gate; only what actually runs in production is in sc
 for why Bandit/pip-audit were chosen over Safety/Snyk, and why pip-audit and Trivy are both kept
 despite auditing overlapping ground — they have different, complementary blind spots.
 
+[CodeQL](.github/workflows/codeql.yml) runs a second, deliberately decoupled SAST pass: on push to
+`main` and on a weekly schedule, never on a PR. Bandit is pattern-based and fast (seconds), so it
+stays in the PR gate for immediate feedback; CodeQL does dataflow/taint-tracking analysis, which
+is slower and not something a developer should wait on mid-review. It is informational, uploaded
+to GitHub Code Scanning alongside Trivy's SARIF report, and never blocks a merge — see
+[docs/retex-webinar.md §1.5](docs/retex-webinar.md) for why decoupling scan cadence from analysis
+rigor is a deliberate architectural choice, and the security-theatre risk it introduces if nobody
+actually reviews the results between scheduled runs.
+
 ## Dynamic analysis (DAST) policy
 
 [OWASP ZAP](https://www.zaproxy.org/) runs a baseline (passive) scan against the `staging`
