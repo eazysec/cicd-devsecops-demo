@@ -263,3 +263,36 @@ ever could — but it would likely **not** have caught the D-listed `pip`-vendor
 which also reported those as "not found"). Trivy inspects the actual image filesystem and caught
 what `pip-audit`-style manifest scanning structurally cannot. Neither tool alone covers what the
 other does — the rationale for running both, not just one.
+
+---
+
+## D11. Adding CodeQL: decoupling scan cadence from analysis rigor
+
+**Decision**: [CodeQL](.github/workflows/codeql.yml) runs a second SAST pass alongside Bandit, but
+on a deliberately different trigger — `push` to `main`, a weekly `schedule`, and manual
+`workflow_dispatch` — never on `pull_request`. See [ADR
+0008](../../docs/adr/0008-codeql-integration.md).
+
+**Rationale**: Bandit is pattern-based and completes in seconds, so it stays inside
+`pr-validation.yml`'s gate for immediate per-PR feedback (D9's co-location logic). CodeQL performs
+dataflow/taint-tracking analysis — deeper, slower, and a poor fit for a merge-blocking gate a
+developer waits on. Rather than forcing one tool to be both fast and exhaustive, the two
+properties are split across two tools running on two different cadences. Results upload to GitHub
+Code Scanning, the same sink already used for Trivy's SARIF report (D9), rather than a second
+bespoke integration.
+
+**Alternatives considered**: Running CodeQL inside `pr-validation.yml` alongside Bandit — rejected,
+would add several minutes to every PR's required checks for a two-endpoint codebase where the
+marginal detection value over Bandit is close to zero; the cost would be paid on every PR whether
+or not the change touches anything CodeQL could usefully analyze. Not adding CodeQL at all — also
+considered, but the decoupled-cadence pattern (fast gate + deferred deep scan) is itself the
+teaching point for the webinar, independent of how much this specific small app benefits from it.
+
+**Known risk, not fully closed**: this decoupling reproduces the D9/§1.4 blind spot
+(`docs/retex-webinar.md`) in a new place — a scan that never blocks anyone and lands in a tab
+nobody is required to open is security theatre by this project's own definition unless someone
+actually reviews it between scheduled runs. Uploading to Code Scanning (a persistent, triaged
+dashboard) is a mitigation, not a fix: a dashboard that is never opened is no better than an
+artifact zip nobody downloads. See [docs/retex-webinar.md
+§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre)
+— left deliberately open rather than declared solved.
