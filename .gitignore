@@ -25,3 +25,6 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Local-only working files, not part of the project's own documentation set
+docs/prompt-slides-webinaire.md
