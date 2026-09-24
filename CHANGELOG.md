@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.6.0...cicd-devsecops-demo-v1.6.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* redirect progress messages to stderr in read_deployed_digest.sh ([97a8ebd](https://github.com/eazysec/cicd-devsecops-demo/commit/97a8ebd1625e49f2d7f145c03cee63b33f6f0d0c))
+
 ## [1.6.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.5.0...cicd-devsecops-demo-v1.6.0) (2026-09-24)
 
 
