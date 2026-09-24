@@ -15,16 +15,21 @@ Environment secrets/variables — see [data-model.md](../data-model.md#environme
 `AWS_REGION`, `EC2_INSTANCE_ID`, `APP_URL`.
 
 **Behavior**:
-1. Resolves the image reference as `ghcr.io/eazysec/cicd-devsecops-demo@<digest>`.
-2. Sends an `AWS-RunShellScript` SSM document to `EC2_INSTANCE_ID` that runs:
+1. Validates `environment` (`staging`/`production` only) and `digest` (must match
+   `sha256:` + 64 lowercase hex characters) before using either — `digest` in particular is
+   embedded unquoted into the shell command AWS SSM executes on the instance, and can arrive
+   from an operator-supplied `workflow_dispatch` input, not only the trusted automated build
+   output, so this is a command-injection guard, not just a format check.
+2. Resolves the image reference as `ghcr.io/eazysec/cicd-devsecops-demo@<digest>`.
+3. Sends an `AWS-RunShellScript` SSM document to `EC2_INSTANCE_ID` that runs:
    `docker pull <ref> && docker rm -f app || true && docker run -d --name app -p 80:8080
    --restart unless-stopped -e ENVIRONMENT=<environment> -e ARTIFACT_DIGEST=<digest>
    --health-cmd ... <ref>`.
-3. Polls `ssm get-command-invocation` until the command reaches a terminal state, with a bounded
+4. Polls `ssm get-command-invocation` until the command reaches a terminal state, with a bounded
    timeout (default 120s); a timeout is treated as failure, never as success-by-default.
-4. On SSM success, calls `scripts/healthcheck.sh "$APP_URL/health" <environment> <digest>` to
+5. On SSM success, calls `scripts/healthcheck.sh "$APP_URL/health" <environment> <digest>` to
    confirm the *externally observable* result, not just "the command ran on the box."
-5. Exits non-zero on any failure (SSM failure, timeout, or health-check failure), with a clear
+6. Exits non-zero on any failure (SSM failure, timeout, or health-check failure), with a clear
    message identifying which stage failed.
 
 **Idempotency**: Running the same `(environment, digest)` pair twice is safe — it just redeploys

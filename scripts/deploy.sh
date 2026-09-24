@@ -31,6 +31,19 @@ case "$environment" in
         ;;
 esac
 
+# `digest` reaches this script from a workflow_dispatch free-text input (deploy.yml, and
+# indirectly rollback.yml via resolve_deployment_digest.sh) as well as the trusted automated
+# build output — unlike `environment` above, nothing upstream constrains its format. It is
+# embedded unquoted into a shell command string that AWS SSM executes on the EC2 instance
+# (the `docker pull ${image_ref}` line below), so an unvalidated value here is a command
+# injection path into that instance, not just a cosmetic input check. A `case`/glob pattern
+# can't express "64 hex characters" precisely (`?` matches any character, defeating the
+# purpose), so this uses grep -E instead.
+if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+    echo "deploy: FAIL - digest must match 'sha256:' + 64 lowercase hex characters, got '$digest'" >&2
+    exit 1
+fi
+
 image_ref="${GHCR_IMAGE}@${digest}"
 script_dir="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 
