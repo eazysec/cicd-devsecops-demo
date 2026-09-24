@@ -296,3 +296,45 @@ dashboard) is a mitigation, not a fix: a dashboard that is never opened is no be
 artifact zip nobody downloads. See [docs/retex-webinar.md
 §1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre)
 — left deliberately open rather than declared solved.
+
+---
+
+## D12. Periodic re-scan of the deployed digest, with an active (not passive) result
+
+**Decision**: [`image-rescan.yml`](../../.github/workflows/image-rescan.yml) re-scans the
+currently-deployed digest of both `staging` and `production` on a weekly schedule (plus
+`workflow_dispatch`) — resolved via the same GitHub Deployments API lookup
+`scripts/resolve_deployment_digest.sh` already uses for rollback. Full-severity SARIF uploads to
+Code Scanning as usual, but a fixable HIGH/CRITICAL finding additionally opens (or updates) a
+GitHub Issue, and the issue is closed automatically once a later run no longer reproduces it.
+
+**Rationale**: Trivy in `release.yml` scans an image exactly once, before it is ever deployed
+(build-once, ADR 0004) — deliberately never re-checked later, so that a CVE published after the
+build can never retroactively fail an already-green pipeline (D5). But that design leaves a real
+gap: nothing re-checks what is *actually running* against newly-published CVEs for as long as it
+stays deployed. This closes that gap the same way D11/ADR 0008 closes it for source code
+(decoupled cadence, never blocks) — reusing the pattern rather than inventing a new one.
+
+**Why an issue, not just another Code Scanning row**: D11 already flagged its own decoupled-cadence
+scan as reproducing the D9/§1.4 blind spot — a scan nobody is forced to look at is security
+theatre by this project's own definition. Adding a *third* scan with the same passive-dashboard
+result would repeat that same mistake, and the stakes here are higher than for source-code
+patterns: this is a known, fixable CVE on what is serving real traffic right now, not a
+hypothetical future exploit path. An actively-created, actively-closed GitHub Issue gives the
+finding an owner and a visible lifecycle instead of one more row in a tab that requires someone to
+remember to open it. See [docs/retex-webinar.md
+§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre) —
+this is the closed-loop follow-up to the risk left open there, not a claim that the earlier risk
+is now retroactively fixed for CodeQL too (it isn't; CodeQL still only uploads to Code Scanning).
+
+**Alternatives considered**: Re-scanning on every push to `main` instead of a schedule — rejected,
+the whole point is to catch drift in the *external* vulnerability database against *unchanged*
+deployed code, which a push-triggered scan cannot do (nothing changed). Failing the workflow
+(`exit-code: 1`) to get GitHub's own run-failure notification instead of an issue — rejected,
+indistinguishable in the Actions UI from a real infrastructure failure, and does not carry the
+same persistent, triageable, closeable lifecycle a dedicated issue does.
+
+**Consequences**: a new failure mode to be aware of — `resolve_deployment_digest.sh` requires at
+least one successful GitHub Deployment to exist for the environment; on a freshly-created
+environment with no deployment history yet, this job fails loudly rather than silently skipping,
+consistent with `scripts/rollback.sh`'s existing "fail clearly, never guess" behavior.

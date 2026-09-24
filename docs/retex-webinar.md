@@ -173,6 +173,17 @@ quelqu'un dont c'est explicitement le rôle) — sans quoi on n'a fait que dépl
 §1.4 d'un artefact zip vers un onglet Code Scanning, avec une meilleure vitrine mais le même trou.
 C'est un point volontairement laissé ouvert dans cette démo plutôt que déclaré résolu.
 
+**Suite, sur un point précis — pas une fermeture générale du risque** : en ajoutant un troisième
+scan à cadence découplée (`image-rescan.yml`, ADR 0009 — re-scanner l'image *réellement déployée*
+chaque semaine, puisque Trivy ne scanne qu'une fois, avant tout déploiement), on a délibérément
+refusé de recréer une troisième fois "juste une ligne de plus dans Code Scanning". Un finding
+HIGH/CRITICAL corrigeable ouvre une issue GitHub, refermée automatiquement quand il ne se
+reproduit plus — un résultat qui a un propriétaire et un cycle de vie, pas une ligne qu'il faut
+se souvenir d'aller consulter. **Mais ça referme le risque pour la couche image, pas pour CodeQL** :
+CodeQL continue d'uploader uniquement vers Code Scanning, sans notification active — le risque
+décrit ci-dessus reste ouvert pour lui, précisément pour ne pas prétendre à une victoire plus
+large que ce qui a été réellement fait.
+
 ---
 
 ## 2. Architecture & conventions — les choix (et ce qu'on a rejeté)

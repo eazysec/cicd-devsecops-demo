@@ -1,0 +1,156 @@
+name: Image Re-scan (deployed digest)
+
+# Trivy in release.yml scans the image exactly once, before it's ever deployed (build-once,
+# ADR 0004) — deliberately never re-checked later (research.md D5: a pipeline must not go red
+# overnight for a CVE published after a build, with no code change of our own). But that means
+# nothing ever re-checks what's ACTUALLY deployed against newly-published CVEs for as long as it
+# stays live. This workflow closes that gap the same way CodeQL does for source code (ADR 0008:
+# decoupled cadence, never blocks) — except the result is an ACTIVE GitHub Issue, not another
+# passive Code Scanning row, specifically to avoid reproducing the "scan nobody looks at" blind
+# spot a third time (docs/retex-webinar.md §1.4/§1.5) on a signal that matters more than most:
+# a known, fixable CVE on what's serving real traffic right now.
+on:
+  schedule:
+    - cron: "0 7 * * 1" # every Monday 07:00 UTC, an hour after codeql.yml's weekly run
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rescan:
+    name: "Re-scan deployed image (${{ matrix.environment }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write # to upload the full SARIF report to Code Scanning
+      issues: write # to open/update/close the tracking issue on fixable HIGH/CRITICAL findings
+    env:
+      GHCR_IMAGE: ghcr.io/${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Resolve currently-deployed digest
+        id: resolve
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          digest="$(scripts/resolve_deployment_digest.sh "${{ matrix.environment }}")"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Trivy scan (full SARIF report, non-blocking)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: "${{ env.GHCR_IMAGE }}@${{ steps.resolve.outputs.digest }}"
+          format: sarif
+          output: trivy-rescan-results.sarif
+          severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+          exit-code: "0"
+
+      - name: Upload Trivy SARIF report to Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        with:
+          sarif_file: trivy-rescan-results.sarif
+          category: trivy-image-rescan-${{ matrix.environment }}
+
+      # Same severity/ignore-unfixed/.trivyignore policy as release.yml's promotion gate
+      # (research.md D5) — but exit-code never fails the job (continue-on-error catches it);
+      # its outcome only decides whether the issue step below runs.
+      - name: Trivy scan (fixable HIGH/CRITICAL only, decides the issue)
+        id: gate
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: "${{ env.GHCR_IMAGE }}@${{ steps.resolve.outputs.digest }}"
+          format: table
+          severity: "HIGH,CRITICAL"
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          exit-code: "1"
+          output: trivy-rescan-summary.txt
+
+      - name: Open or update a tracking issue (fixable HIGH/CRITICAL found)
+        if: steps.gate.outcome == 'failure'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const environment = '${{ matrix.environment }}';
+            const digest = '${{ steps.resolve.outputs.digest }}';
+            const summary = fs.readFileSync('trivy-rescan-summary.txt', 'utf8');
+            const title = `Security: fixable HIGH/CRITICAL CVE(s) on deployed image (${environment})`;
+
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security-rescan',
+            });
+            const existing = open.data.find((i) => i.title === title);
+
+            const body = [
+              `Periodic re-scan of the currently deployed digest found fixable HIGH/CRITICAL CVE(s).`,
+              ``,
+              `- Environment: \`${environment}\``,
+              `- Digest: \`${digest}\``,
+              `- Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              ``,
+              '```',
+              summary.slice(0, 60000),
+              '```',
+            ].join('\n');
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Still present as of this run.\n\n${body}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['security-rescan'],
+              });
+            }
+
+      - name: Close the tracking issue if no longer reproducing
+        if: steps.gate.outcome == 'success'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            const environment = '${{ matrix.environment }}';
+            const title = `Security: fixable HIGH/CRITICAL CVE(s) on deployed image (${environment})`;
+
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security-rescan',
+            });
+            const existing = open.data.find((i) => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: 'No longer reproducing as of this run — closing.',
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+            }
