@@ -154,3 +154,110 @@ jobs:
                 state: 'closed',
               });
             }
+
+  drift-check:
+    name: "Drift check: declared vs. running (${{ matrix.environment }})"
+    # Separate job, not extra steps in `rescan` above: this is a genuinely different concern
+    # (declared state vs. actual state, not vulnerability content) with a genuinely different
+    # permission need (AWS/SSM access) — co-located here because both share the identical
+    # natural pipeline stage (periodic, post-deploy, against whatever's currently live), same
+    # reasoning as D9, but kept in its own job so `rescan` never needs AWS credentials at all.
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.environment }} # for this environment's AWS_ROLE_ARN/AWS_REGION/EC2_INSTANCE_ID
+    timeout-minutes: 10
+    permissions:
+      id-token: write # OIDC — no long-lived AWS credentials anywhere (research.md D1)
+      contents: read
+      issues: write
+    env:
+      GHCR_IMAGE: ghcr.io/${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Resolve declared digest (GitHub Deployments API)
+        id: declared
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          digest="$(scripts/resolve_deployment_digest.sh "${{ matrix.environment }}")"
+          echo "image_ref=${GHCR_IMAGE}@${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd  # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Read actually-running digest (SSM)
+        id: running
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+        run: |
+          image_ref="$(scripts/read_deployed_digest.sh "${{ matrix.environment }}")"
+          echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
+
+      - name: Compare declared vs. running, open/update/close a tracking issue on drift
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            const environment = '${{ matrix.environment }}';
+            const declared = '${{ steps.declared.outputs.image_ref }}';
+            const running = '${{ steps.running.outputs.image_ref }}';
+            const title = `Security: deployed digest drift detected (${environment})`;
+
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security-rescan',
+            });
+            const existing = open.data.find((i) => i.title === title);
+
+            if (declared !== running) {
+              const body = [
+                `The image actually running on **${environment}** does not match what the GitHub`,
+                `Deployments API recorded as the last successful deployment — either the instance`,
+                `was changed outside \`deploy.yml\`, or a deployment record doesn't reflect reality.`,
+                ``,
+                `- Declared (GitHub Deployments API): \`${declared}\``,
+                `- Running (read via SSM):            \`${running}\``,
+                `- Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              ].join('\n');
+
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existing.number,
+                  body: `Still present as of this run.\n\n${body}`,
+                });
+              } else {
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title,
+                  body,
+                  labels: ['security-rescan'],
+                });
+              }
+            } else if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: 'No longer reproducing as of this run — closing.',
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+            }

@@ -50,3 +50,30 @@ automatically once no longer reproduced.
 - **This does not retroactively fix ADR 0008's own open risk.** CodeQL still only uploads to Code
   Scanning; this ADR closes the loop for the *image* layer specifically, not the *source-code*
   layer. That gap stays explicitly open, not silently assumed solved by analogy.
+
+## Addendum: `drift-check` job — declared vs. actually running
+
+`resolve_deployment_digest.sh` (used by `rescan` above) only says what GitHub *believes* was
+deployed successfully — it never confirms what is actually running on the instance. A manual,
+out-of-band change to the container (bypassing `deploy.yml` entirely) would go completely
+unnoticed by `rescan`, which would happily keep re-scanning the digest GitHub thinks is live.
+
+Added a second job, `drift-check`, in the same workflow file rather than as extra steps in
+`rescan`: same natural pipeline stage (periodic, post-deploy, against whatever's currently live —
+D9's placement principle), but a genuinely different concern (declared vs. actual state, not
+vulnerability content) with a genuinely different permission need (AWS/SSM access via OIDC). A
+separate job keeps `rescan` free of any AWS credential at all, and each job's `permissions:`
+stays scoped to only what it needs — the same per-job least-privilege discipline the README
+documents as this project's contract for `GITHUB_TOKEN` scopes.
+
+`scripts/read_deployed_digest.sh` (new) reads the running container's actual image reference via
+SSM (`docker inspect app --format="{{.Config.Image}}"`) — read-only, never pulls or restarts
+anything. `drift-check` compares this against `resolve_deployment_digest.sh`'s result and
+opens/updates/closes a tracking issue on mismatch, same active-result discipline as `rescan`'s
+CVE findings, same `security-rescan` label, distinct issue title so the two concerns never get
+conflated in the tracker.
+
+**Not verified end-to-end against real AWS/EC2** — no AWS credentials or Docker daemon available
+in the sandbox this was built in. Shell syntax (`sh -n`) and the YAML are checked; the actual SSM
+round-trip and the `docker inspect` format string are not empirically confirmed working yet. Test
+this for real (`workflow_dispatch` on `image-rescan.yml`) before relying on it.
