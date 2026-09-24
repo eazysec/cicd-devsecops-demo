@@ -30,3 +30,9 @@ flowchart TD
 
     Main -.->|push + weekly, never blocks| CodeQL["🔎 CodeQL\n(SAST, dataflow analysis)\ninformational"]
     CodeQL -.-> CodeScanning
+
+    Staging -.->|weekly, never blocks| Rescan["🔁 Image Re-scan\n(Trivy on the deployed digest)"]
+    Production -.->|weekly, never blocks| Rescan
+    Rescan -.->|full SARIF, always| CodeScanning
+    Rescan -.->|fixable HIGH/CRITICAL found| Issue["🎫 GitHub Issue\nopened/updated"]
+    Rescan -.->|no longer found| IssueClosed["✅ Tracking issue auto-closed"]
