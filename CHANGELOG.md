@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.2](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.4.1...cicd-devsecops-demo-v1.4.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* validate digest format in deploy.sh before remote execution ([88b7330](https://github.com/eazysec/cicd-devsecops-demo/commit/88b7330e5df09b0728f17f5daa544763509f82bf))
+* validate digest format in deploy.sh before remote execution ([0567ef8](https://github.com/eazysec/cicd-devsecops-demo/commit/0567ef8ab354c5fb4e5d9828ea165deb150d1d0d))
+
 ## [1.4.1](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.4.0...cicd-devsecops-demo-v1.4.1) (2026-09-24)
 
 
