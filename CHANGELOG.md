@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.4.2...cicd-devsecops-demo-v1.5.0) (2026-09-24)
+
+
+### Features
+
+* periodic re-scan of the deployed image, with active results ([2370d86](https://github.com/eazysec/cicd-devsecops-demo/commit/2370d869c58b160a32dcd66276c21c6f4ec81b01))
+* periodic re-scan of the deployed image, with active results ([f1ec1b2](https://github.com/eazysec/cicd-devsecops-demo/commit/f1ec1b2e690de47838406a3f2e7857a47d183a6c))
+
 ## [1.4.2](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.4.1...cicd-devsecops-demo-v1.4.2) (2026-09-24)
 
 
