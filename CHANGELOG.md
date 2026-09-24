@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.5.0...cicd-devsecops-demo-v1.6.0) (2026-09-24)
+
+
+### Features
+
+* add drift-check job (declared digest vs. actually running) ([5f9cbe6](https://github.com/eazysec/cicd-devsecops-demo/commit/5f9cbe6e096a1f4666277122d509196279196b8f))
+* add drift-check job (declared digest vs. actually running) ([d672046](https://github.com/eazysec/cicd-devsecops-demo/commit/d672046f5a5029341a613ad757086a8753ccf117))
+
 ## [1.5.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.4.2...cicd-devsecops-demo-v1.5.0) (2026-09-24)
 
 
