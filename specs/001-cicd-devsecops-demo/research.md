@@ -338,3 +338,17 @@ same persistent, triageable, closeable lifecycle a dedicated issue does.
 least one successful GitHub Deployment to exist for the environment; on a freshly-created
 environment with no deployment history yet, this job fails loudly rather than silently skipping,
 consistent with `scripts/rollback.sh`'s existing "fail clearly, never guess" behavior.
+
+**Addendum — `drift-check` job**: `resolve_deployment_digest.sh` only reports what GitHub
+*believes* was deployed, never what is actually running; a manual out-of-band change to a
+container would go unnoticed. Added a second job (not extra steps in `rescan`) that reads the
+running container's real image reference via SSM (new script,
+`scripts/read_deployed_digest.sh` — `docker inspect app --format="{{.Config.Image}}"`,
+read-only) and compares it against the declared digest, same active-issue discipline on mismatch.
+Kept as its own job specifically so `rescan` never needs AWS/SSM credentials — genuinely
+different concern (state drift, not vulnerability content), genuinely different permission
+footprint, same natural pipeline stage as `rescan` so still the same file (D9's placement
+principle). See [ADR 0009's
+addendum](../../docs/adr/0009-image-rescan-active-results.md#addendum-drift-check-job--declared-vs-actually-running).
+Not verified end-to-end against real AWS/EC2 — no credentials/Docker daemon in the sandbox this
+was built in; shell/YAML syntax checked, the actual SSM round-trip is not.
