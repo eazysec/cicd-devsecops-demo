@@ -39,6 +39,19 @@ the same image.
 environment's running container. This script never has access to credentials for any other
 environment (enforced by the calling workflow's OIDC role scoping, not by the script itself).
 
+## `scripts/read_deployed_digest.sh <environment>`
+
+Read-only: sends an `AWS-RunShellScript` SSM document to `EC2_INSTANCE_ID` running
+`docker inspect app --format="{{.Config.Image}}"`, polls for completion the same way
+`deploy.sh` does, and prints the resulting `ghcr.io/...@sha256:...` reference — the exact
+reference the running container was created with, straight from Docker, not from any GitHub
+record. Never pulls, never restarts, never mutates anything. Fails clearly (no fallback guess) if
+the SSM command doesn't reach `Success`, or if `app` isn't running (empty output).
+
+Used by `image-rescan.yml`'s `drift-check` job to compare this against
+`scripts/resolve_deployment_digest.sh`'s result — a mismatch means the instance was changed
+outside `deploy.yml`, or a GitHub Deployment record doesn't reflect reality.
+
 ## `scripts/rollback.sh <environment>`
 
 Thin wrapper: resolves the digest of the most recent **successful** GitHub Deployment to

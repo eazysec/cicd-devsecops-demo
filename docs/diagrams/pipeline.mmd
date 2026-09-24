@@ -36,3 +36,8 @@ flowchart TD
     Rescan -.->|full SARIF, always| CodeScanning
     Rescan -.->|fixable HIGH/CRITICAL found| Issue["🎫 GitHub Issue\nopened/updated"]
     Rescan -.->|no longer found| IssueClosed["✅ Tracking issue auto-closed"]
+
+    Staging -.->|weekly, never blocks| Drift["🔬 Drift Check\n(declared digest vs.\nactually running, via SSM)"]
+    Production -.->|weekly, never blocks| Drift
+    Drift -.->|mismatch found| Issue
+    Drift -.->|matches| IssueClosed
