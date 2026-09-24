@@ -87,6 +87,11 @@ flowchart TD
     Rescan -.->|full SARIF, always| CodeScanning
     Rescan -.->|fixable HIGH/CRITICAL found| Issue["🎫 GitHub Issue\nopened/updated"]
     Rescan -.->|no longer found| IssueClosed["✅ Tracking issue auto-closed"]
+
+    Staging -.->|weekly, never blocks| Drift["🔬 Drift Check\n(declared digest vs.\nactually running, via SSM)"]
+    Production -.->|weekly, never blocks| Drift
+    Drift -.->|mismatch found| Issue
+    Drift -.->|matches| IssueClosed
 ```
 
 (Source: [`docs/diagrams/pipeline.mmd`](docs/diagrams/pipeline.mmd); the dynamic/policy diagram
@@ -160,7 +165,7 @@ checks and rule configuration on `main` (manual GitHub setup step).
 | `pull_request` → `main` | `pr-validation.yml` | Quality + security gates, required to merge |
 | `push`/merge to `main` | `release.yml` | Release Please → build once → scan → staging → production |
 | `push` to `main`, weekly schedule, or `workflow_dispatch` | `codeql.yml` | CodeQL SAST pass, deep but deliberately non-blocking (never on a PR) |
-| Weekly schedule or `workflow_dispatch` | `image-rescan.yml` | Re-scans the currently-deployed digest (staging + production) for newly-published CVEs; opens/closes a GitHub Issue on fixable HIGH/CRITICAL findings |
+| Weekly schedule or `workflow_dispatch` | `image-rescan.yml` | `rescan`: re-scans the currently-deployed digest for newly-published CVEs. `drift-check`: compares that declared digest against what's actually running (via SSM). Both open/close a GitHub Issue on findings |
 | `workflow_dispatch` on `deploy.yml` | `deploy.yml` | Manual promote/redeploy of a named digest |
 | `workflow_dispatch` on `rollback.yml` | `rollback.yml` | Resolve (or accept) a digest and redeploy it |
 
@@ -293,7 +298,9 @@ currently-deployed digest weekly (Trivy only ever scans once, at build time — 
 0009](docs/adr/0009-image-rescan-active-results.md),
 [research.md D12](specs/001-cicd-devsecops-demo/research.md#d12-periodic-re-scan-of-the-deployed-digest-with-an-active-not-passive-result)),
 opening/closing a GitHub Issue on fixable HIGH/CRITICAL findings instead of only feeding another
-dashboard; every GitHub Action pinned by commit SHA; least-privilege, OIDC-based AWS access;
+dashboard — its `drift-check` job also compares that declared digest against what's actually
+running on the instance (read via SSM), catching an out-of-band change `deploy.yml` never made;
+every GitHub Action pinned by commit SHA; least-privilege, OIDC-based AWS access;
 Dependabot for `pip`/`docker`/`github-actions`.
 [`docs/codeql-demo-vulns.md`](docs/codeql-demo-vulns.md) catalogs illustrative vulnerabilities for
 demonstrating the CodeQL-vs-Bandit gap live, with the safe demo procedure (disposable branch, never
