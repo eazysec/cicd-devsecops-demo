@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.4.0...cicd-devsecops-demo-v1.4.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* declare GITHUB_TOKEN permissions explicitly on every job ([0a83572](https://github.com/eazysec/cicd-devsecops-demo/commit/0a83572b957e7e64784ad46bdca422d4376c4138))
+* declare GITHUB_TOKEN permissions explicitly on every job ([a6281e9](https://github.com/eazysec/cicd-devsecops-demo/commit/a6281e924f9f8ec86b582ff386bd6de0025c5bfd))
+
 ## [1.4.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.3.0...cicd-devsecops-demo-v1.4.0) (2026-09-23)
 
 
