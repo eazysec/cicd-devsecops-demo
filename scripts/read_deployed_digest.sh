@@ -31,7 +31,7 @@ case "$environment" in
         ;;
 esac
 
-echo "read_deployed_digest: sending SSM command to $EC2_INSTANCE_ID to inspect the running container (environment=$environment)"
+echo "read_deployed_digest: sending SSM command to $EC2_INSTANCE_ID to inspect the running container (environment=$environment)" >&2
 
 # .Config.Image is exactly the reference deploy.sh passed to `docker run` (the full
 # ghcr.io/...@sha256:... string) — more direct and unambiguous than fishing through the image's
@@ -47,7 +47,7 @@ command_id="$(aws ssm send-command \
     --query "Command.CommandId" \
     --output text)"
 
-echo "read_deployed_digest: SSM command $command_id sent, polling for completion (timeout ${SSM_TIMEOUT_SECONDS}s)"
+echo "read_deployed_digest: SSM command $command_id sent, polling for completion (timeout ${SSM_TIMEOUT_SECONDS}s)" >&2
 
 elapsed=0
 status="Pending"
