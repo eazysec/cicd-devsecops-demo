@@ -81,6 +81,17 @@ theatre (see `docs/retex-webinar.md`). Free for this repository (public); a priv
 need the paid GitHub Code Security add-on for this same feature — see [GitHub's Advanced Security
 billing docs](https://docs.github.com/en/billing/concepts/product-billing/github-advanced-security).
 
+**This scan happens exactly once, at build time, before the image is ever deployed** — by design
+(research.md D5), it is never re-run later, so it can never retroactively fail an already-green
+pipeline. That leaves what is *actually deployed* unchecked against newly-published CVEs for as
+long as it stays live. [`image-rescan.yml`](.github/workflows/image-rescan.yml) closes that gap:
+a weekly (+ on-demand) re-scan of the currently-deployed digest on both `staging` and
+`production`. Deliberately not just another Code Scanning entry — a fixable HIGH/CRITICAL finding
+opens (or updates) a GitHub Issue, closed automatically once no longer reproduced, specifically to
+avoid repeating the "scan nobody looks at" pattern a third time on a finding that matters more
+than most: a known, fixable CVE on what is serving real traffic right now. See
+[ADR 0009](docs/adr/0009-image-rescan-active-results.md).
+
 ## Static analysis and dependency scanning policy (SAST/SCA)
 
 Every push/PR touching application code runs [Bandit](https://bandit.readthedocs.io/) (SAST) and

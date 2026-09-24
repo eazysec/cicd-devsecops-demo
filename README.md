@@ -81,6 +81,12 @@ flowchart TD
 
     Main -.->|push + weekly, never blocks| CodeQL["🔎 CodeQL\n(SAST, dataflow analysis)\ninformational"]
     CodeQL -.-> CodeScanning
+
+    Staging -.->|weekly, never blocks| Rescan["🔁 Image Re-scan\n(Trivy on the deployed digest)"]
+    Production -.->|weekly, never blocks| Rescan
+    Rescan -.->|full SARIF, always| CodeScanning
+    Rescan -.->|fixable HIGH/CRITICAL found| Issue["🎫 GitHub Issue\nopened/updated"]
+    Rescan -.->|no longer found| IssueClosed["✅ Tracking issue auto-closed"]
 ```
 
 (Source: [`docs/diagrams/pipeline.mmd`](docs/diagrams/pipeline.mmd); the dynamic/policy diagram
@@ -154,6 +160,7 @@ checks and rule configuration on `main` (manual GitHub setup step).
 | `pull_request` → `main` | `pr-validation.yml` | Quality + security gates, required to merge |
 | `push`/merge to `main` | `release.yml` | Release Please → build once → scan → staging → production |
 | `push` to `main`, weekly schedule, or `workflow_dispatch` | `codeql.yml` | CodeQL SAST pass, deep but deliberately non-blocking (never on a PR) |
+| Weekly schedule or `workflow_dispatch` | `image-rescan.yml` | Re-scans the currently-deployed digest (staging + production) for newly-published CVEs; opens/closes a GitHub Issue on fixable HIGH/CRITICAL findings |
 | `workflow_dispatch` on `deploy.yml` | `deploy.yml` | Manual promote/redeploy of a named digest |
 | `workflow_dispatch` on `rollback.yml` | `rollback.yml` | Resolve (or accept) a digest and redeploy it |
 
@@ -281,8 +288,13 @@ from the fast PR gate: runs on push to `main` and weekly, never on a PR
 [research.md D11](specs/001-cicd-devsecops-demo/research.md#d11-adding-codeql-decoupling-scan-cadence-from-analysis-rigor));
 Trivy's full SARIF report and CodeQL's findings both uploaded to **GitHub Code Scanning** (Security
 tab), not just kept in a build artifact nobody opens — free for this public repo, would need the
-paid GitHub Code Security add-on on a private one; every GitHub Action pinned by commit SHA;
-least-privilege, OIDC-based AWS access; Dependabot for `pip`/`docker`/`github-actions`.
+paid GitHub Code Security add-on on a private one; **`image-rescan.yml`** re-scans the
+currently-deployed digest weekly (Trivy only ever scans once, at build time — [ADR
+0009](docs/adr/0009-image-rescan-active-results.md),
+[research.md D12](specs/001-cicd-devsecops-demo/research.md#d12-periodic-re-scan-of-the-deployed-digest-with-an-active-not-passive-result)),
+opening/closing a GitHub Issue on fixable HIGH/CRITICAL findings instead of only feeding another
+dashboard; every GitHub Action pinned by commit SHA; least-privilege, OIDC-based AWS access;
+Dependabot for `pip`/`docker`/`github-actions`.
 [`docs/codeql-demo-vulns.md`](docs/codeql-demo-vulns.md) catalogs illustrative vulnerabilities for
 demonstrating the CodeQL-vs-Bandit gap live, with the safe demo procedure (disposable branch, never
 merged).
@@ -400,6 +412,7 @@ Short, focused ADRs for the decisions worth defending in front of an experienced
 - [0006 — Security tool placement: co-located by pipeline stage](docs/adr/0006-security-tool-placement.md)
 - [0007 — SAST/SCA tool selection: Bandit + pip-audit](docs/adr/0007-sast-sca-tool-selection.md)
 - [0008 — CodeQL integration: decoupled cadence, not a PR gate](docs/adr/0008-codeql-integration.md)
+- [0009 — Periodic image re-scan: active results, not another passive dashboard](docs/adr/0009-image-rescan-active-results.md)
 
 ## Possible Enhancements
 
