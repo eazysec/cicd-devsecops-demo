@@ -74,6 +74,24 @@ the base image) go in `.trivyignore`, one CVE per line, each with a reviewer, a 
 re-review date — added via normal PR review, never by the introducing change's own author acting
 alone (the same non-bypass principle as secret scanning).
 
+The full-severity SARIF report (everything, not just what blocks) is uploaded to **GitHub Code
+Scanning** (Security tab), not just kept as a build artifact — a scanner whose output only exists
+in a zip nobody opens unless something already failed elsewhere is its own kind of security
+theatre (see `docs/retex-webinar.md`). Free for this repository (public); a private repo would
+need the paid GitHub Code Security add-on for this same feature — see [GitHub's Advanced Security
+billing docs](https://docs.github.com/en/billing/concepts/product-billing/github-advanced-security).
+
+**This scan happens exactly once, at build time, before the image is ever deployed** — by design
+(research.md D5), it is never re-run later, so it can never retroactively fail an already-green
+pipeline. That leaves what is *actually deployed* unchecked against newly-published CVEs for as
+long as it stays live. [`image-rescan.yml`](.github/workflows/image-rescan.yml) closes that gap:
+a weekly (+ on-demand) re-scan of the currently-deployed digest on both `staging` and
+`production`. Deliberately not just another Code Scanning entry — a fixable HIGH/CRITICAL finding
+opens (or updates) a GitHub Issue, closed automatically once no longer reproduced, specifically to
+avoid repeating the "scan nobody looks at" pattern a third time on a finding that matters more
+than most: a known, fixable CVE on what is serving real traffic right now. See
+[ADR 0009](docs/adr/0009-image-rescan-active-results.md).
+
 ## Static analysis and dependency scanning policy (SAST/SCA)
 
 Every push/PR touching application code runs [Bandit](https://bandit.readthedocs.io/) (SAST) and
@@ -92,17 +110,37 @@ therefore cannot block this gate; only what actually runs in production is in sc
 for why Bandit/pip-audit were chosen over Safety/Snyk, and why pip-audit and Trivy are both kept
 despite auditing overlapping ground — they have different, complementary blind spots.
 
+[CodeQL](.github/workflows/codeql.yml) runs a second, deliberately decoupled SAST pass: on push to
+`main` and on a weekly schedule, never on a PR. Bandit is pattern-based and fast (seconds), so it
+stays in the PR gate for immediate feedback; CodeQL does dataflow/taint-tracking analysis, which
+is slower and not something a developer should wait on mid-review. It is informational, uploaded
+to GitHub Code Scanning alongside Trivy's SARIF report, and never blocks a merge — see
+[docs/retex-webinar.md §1.5](docs/retex-webinar.md) for why decoupling scan cadence from analysis
+rigor is a deliberate architectural choice, and the security-theatre risk it introduces if nobody
+actually reviews the results between scheduled runs.
+
+[docs/codeql-demo-vulns.md](docs/codeql-demo-vulns.md) catalogs illustrative vulnerabilities
+(CodeQL catches, Bandit misses) for demo purposes — same discipline as the fake-secret demo below:
+a permanent, inert recipe, applied only to a disposable branch that is run via `workflow_dispatch`
+and deleted afterward, never merged.
+
 ## Dynamic analysis (DAST) policy
 
 [OWASP ZAP](https://www.zaproxy.org/) runs a baseline (passive) scan against the `staging`
 environment after every successful deploy that passes its health check and smoke test —
 `environment: staging` only, never against `production` directly. Deliberately **informational**,
-not a blocking gate: results land in a build artifact (`zap-baseline-report`), not an
-auto-failed job. See [research.md
+not a blocking gate: results land in a build artifact (`zap-baseline-report`) and a concise
+summary in the run's Job Summary, not an auto-failed job. See [research.md
 D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category)
 for the reasoning — DAST findings tend to need more contextual human judgment than a
 CVE-with-a-known-fix does, which is exactly the "limits of automation" this project tries to
 demonstrate honestly rather than force into a binary pass/fail it doesn't fit well.
+
+**Not yet uploaded to Code Scanning**, unlike Trivy: `zap-baseline.py` doesn't natively emit
+SARIF, and the available workarounds (an unofficial third-party converter, or reconfiguring the
+scan to use ZAP's own Automation Framework instead of the simple baseline action) were judged too
+fragile to ship without being able to test them end-to-end first. Tracked in **Possible
+Enhancements** below rather than attempted half-verified.
 
 ## Dependency policy
 

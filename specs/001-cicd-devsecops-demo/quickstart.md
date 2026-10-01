@@ -1,5 +1,12 @@
 # Quickstart: Validate the Feature End-to-End
 
+Scope: local development validation only — running the app, the test suite, and the individual
+demo scenarios in isolation on your own machine. For the actual live-conference sequence (exact
+commands, timing, what to say at each step), see
+[`docs/roadmapLiveWebinaire.md`](../../docs/roadmapLiveWebinaire.md) instead; this file predates
+it and the two now overlap in places, this one stays the lower-level "does each piece work"
+reference.
+
 Prerequisites: Python 3.13, Docker, (optionally) AWS CLI configured for manual deploy testing.
 
 ## 1. Local app
@@ -52,10 +59,13 @@ git reset --hard HEAD~1   # clean up the local demo branch before pushing anythi
 bash scripts/demo-local.sh
 ```
 
-**Expected**: sequential PASS output for lint → tests → secret scan → Docker build → (Trivy if
-`trivy` is installed locally, else a visible "skipped: not installed" line, not a failure) →
-`docker run` → `scripts/healthcheck.sh` against `localhost:8080/health` → `scripts/smoke-test.sh`.
-Exits non-zero on the first failing stage, with that stage named.
+**Expected**: sequential PASS output for lint → tests → SAST (Bandit) → dependency scan
+(pip-audit) → secret scan (Gitleaks, if installed, else a visible "skipped: not installed" line) →
+Docker build → Trivy (if installed, else skipped) → `docker run` → `scripts/healthcheck.sh` against
+`localhost:8080/health` → `scripts/smoke-test.sh` → ZAP baseline scan (if its image is already
+cached locally, else skipped). Exits non-zero on the first failing stage, with that stage named —
+Bandit/pip-audit are not optional (installed via `pip install -e ".[dev]"`, same tier as
+ruff/pytest), unlike Gitleaks/Trivy/ZAP which degrade to a skip if not present/cached.
 
 ## 4. Policy classification unit test
 
