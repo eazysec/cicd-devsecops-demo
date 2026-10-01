@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.6.1...cicd-devsecops-demo-v1.6.2) (2026-10-01)
+
+
+### Bug Fixes
+
+* add missing HTTP security headers found by a real ZAP scan again… ([2e1a80e](https://github.com/eazysec/cicd-devsecops-demo/commit/2e1a80ee143f5a330eca14232882ac3d3689b04c))
+
 ## [1.6.1](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.6.0...cicd-devsecops-demo-v1.6.1) (2026-09-24)
 
 
