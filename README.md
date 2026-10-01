@@ -51,22 +51,26 @@ below.
 ```mermaid
 flowchart TD
     Dev["👤 Developer"] --> Branch["Short-lived branch\nfix/feat-xyz"]
+    Branch -.->|chosen now, read later| CommitType["📝 Conventional Commit\nfix: / feat: / !\n→ PATCH / MINOR / MAJOR"]
+    CommitType -.-> RP
     Branch -->|push| FastFeedback["pr-validation.yml\nfast feedback (lint, tests)"]
     Branch -->|open PR| PR["Pull Request → main"]
-    PR --> Gates["pr-validation.yml\nSecurity + Quality Gates\n(Gitleaks, Ruff, pytest+cov)"]
+    PR --> Gates["pr-validation.yml\nSecurity + Quality Gates\n(Gitleaks, Ruff, pytest+cov,\nBandit, pip-audit)"]
     Gates -->|all required gates pass| Merge["Merge to main"]
     Gates -->|any required gate fails| Blocked["❌ Merge blocked"]
     Merge --> Main["main branch"]
     Main --> RP["Release Please\n(release.yml)"]
-    RP -->|Conventional Commits\naccumulated| ReleasePR["Release PR\nchore(main): release X.Y.Z"]
+    RP -->|reads accumulated\ncommit types| ReleasePR["Release PR\nchore(main): release X.Y.Z"]
     ReleasePR -->|merge| Release["Release created\n(tag + GitHub Release)"]
     Release --> BuildOnce["🔨 Build Once\ndocker build + push (GHCR)"]
     BuildOnce --> Scan["🔍 Trivy Scan\n(HIGH/CRITICAL + fix available blocks)"]
     Scan -->|pass| Registry["📦 GHCR\nimmutable digest"]
     Scan -->|fail| ScanBlocked["❌ Promotion blocked"]
+    Scan -.->|full SARIF, always| CodeScanning["📊 GitHub Code Scanning"]
     Registry --> Staging["🚀 Deploy: staging\n(same digest)"]
     Staging --> VerifyStaging["Health check + Smoke test"]
     VerifyStaging -->|pass| PromotionGate["✅ Promotion Gate\n(production required reviewer)"]
+    VerifyStaging -->|pass| ZAP["🕵️ ZAP DAST scan\n(informational, non-blocking)"]
     VerifyStaging -->|fail| StagingFail["❌ Stop — production never touched"]
     PromotionGate --> Production["🚀 Deploy: production\n(PROMOTE SAME digest, no rebuild)"]
     Production --> VerifyProd["Health check + Smoke test"]
@@ -74,6 +78,20 @@ flowchart TD
     VerifyProd -->|fail| Rollback["↩️ Automatic Rollback\nprevious known-good digest"]
     Rollback --> RollbackVerify["Health check"]
     RollbackVerify --> Restored["✅ Production restored"]
+
+    Main -.->|push + weekly, never blocks| CodeQL["🔎 CodeQL\n(SAST, dataflow analysis)\ninformational"]
+    CodeQL -.-> CodeScanning
+
+    Staging -.->|weekly, never blocks| Rescan["🔁 Image Re-scan\n(Trivy on the deployed digest)"]
+    Production -.->|weekly, never blocks| Rescan
+    Rescan -.->|full SARIF, always| CodeScanning
+    Rescan -.->|fixable HIGH/CRITICAL found| Issue["🎫 GitHub Issue\nopened/updated"]
+    Rescan -.->|no longer found| IssueClosed["✅ Tracking issue auto-closed"]
+
+    Staging -.->|weekly, never blocks| Drift["🔬 Drift Check\n(declared digest vs.\nactually running, via SSM)"]
+    Production -.->|weekly, never blocks| Drift
+    Drift -.->|mismatch found| Issue
+    Drift -.->|matches| IssueClosed
 ```
 
 (Source: [`docs/diagrams/pipeline.mmd`](docs/diagrams/pipeline.mmd); the dynamic/policy diagram
@@ -146,6 +164,8 @@ checks and rule configuration on `main` (manual GitHub setup step).
 | `push` to a non-`main` branch | `pr-validation.yml` | Fast feedback: same gates as a PR |
 | `pull_request` → `main` | `pr-validation.yml` | Quality + security gates, required to merge |
 | `push`/merge to `main` | `release.yml` | Release Please → build once → scan → staging → production |
+| `push` to `main`, weekly schedule, or `workflow_dispatch` | `codeql.yml` | CodeQL SAST pass, deep but deliberately non-blocking (never on a PR) |
+| Weekly schedule or `workflow_dispatch` | `image-rescan.yml` | `rescan`: re-scans the currently-deployed digest for newly-published CVEs. `drift-check`: compares that declared digest against what's actually running (via SSM). Both open/close a GitHub Issue on findings |
 | `workflow_dispatch` on `deploy.yml` | `deploy.yml` | Manual promote/redeploy of a named digest |
 | `workflow_dispatch` on `rollback.yml` | `rollback.yml` | Resolve (or accept) a digest and redeploy it |
 
@@ -267,8 +287,24 @@ green pipeline flaky — see [research.md
 D5](specs/001-cicd-devsecops-demo/research.md#d5-vulnerability-scanning-policy-trivy)); OWASP ZAP
 baseline scan (DAST) against staging after every successful deploy, informational rather than
 blocking ([research.md D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category));
-every GitHub Action pinned by commit SHA; least-privilege, OIDC-based AWS access; Dependabot for
-`pip`/`docker`/`github-actions`.
+**CodeQL** as a second, deeper SAST pass — dataflow/taint-tracking analysis, deliberately decoupled
+from the fast PR gate: runs on push to `main` and weekly, never on a PR
+([ADR 0008](docs/adr/0008-codeql-integration.md),
+[research.md D11](specs/001-cicd-devsecops-demo/research.md#d11-adding-codeql-decoupling-scan-cadence-from-analysis-rigor));
+Trivy's full SARIF report and CodeQL's findings both uploaded to **GitHub Code Scanning** (Security
+tab), not just kept in a build artifact nobody opens — free for this public repo, would need the
+paid GitHub Code Security add-on on a private one; **`image-rescan.yml`** re-scans the
+currently-deployed digest weekly (Trivy only ever scans once, at build time — [ADR
+0009](docs/adr/0009-image-rescan-active-results.md),
+[research.md D12](specs/001-cicd-devsecops-demo/research.md#d12-periodic-re-scan-of-the-deployed-digest-with-an-active-not-passive-result)),
+opening/closing a GitHub Issue on fixable HIGH/CRITICAL findings instead of only feeding another
+dashboard — its `drift-check` job also compares that declared digest against what's actually
+running on the instance (read via SSM), catching an out-of-band change `deploy.yml` never made;
+every GitHub Action pinned by commit SHA; least-privilege, OIDC-based AWS access;
+Dependabot for `pip`/`docker`/`github-actions`.
+[`docs/codeql-demo-vulns.md`](docs/codeql-demo-vulns.md) catalogs illustrative vulnerabilities for
+demonstrating the CodeQL-vs-Bandit gap live, with the safe demo procedure (disposable branch, never
+merged).
 
 ## Secrets and variables
 
@@ -312,7 +348,10 @@ rebuilds — always redeploys a previously built digest. Full design: [ADR
 A 10–15 minute primary path through Scenarios A–D (spec.md), with Scenario E (rollback) as an
 explicitly optional/backup beat — see spec.md Assumptions for why rollback isn't baked into the
 timed critical path. Prepare beforehand: `main` already at a tagged `v1.0.0`, a clean working
-tree, and staging/production already deployed and healthy so the "before" state is visible.
+tree, and staging/production already deployed and healthy so the "before" state is visible. The
+table below is the condensed, public version of this sequence — see
+[`docs/roadmapLiveWebinaire.md`](docs/roadmapLiveWebinaire.md) for the exact commands, clicks, and
+timing budget used to actually run it live.
 
 | # | What I show | Concept | Command | Expected result | If it fails |
 |---|---|---|---|---|---|
@@ -360,7 +399,7 @@ docker pull ghcr.io/zaproxy/zaproxy:2.17.0
 | New CVE published the morning of the talk | Only fixable HIGH/CRITICAL blocks; build the demo's exact artifact and verify it the day before, don't rebuild live ([research.md D5](specs/001-cicd-devsecops-demo/research.md#d5-vulnerability-scanning-policy-trivy)) |
 | Free-tier compute sleeps/cold-starts mid-talk | Always-on EC2 instances, no scale-to-zero platform ([ADR 0001](docs/adr/0001-deployment-platform.md)) |
 | GitHub/registry/AWS unreachable during the talk | [Emergency Demo Plan](#-emergency-demo-plan) reproduces the pre-deploy chain fully offline |
-| GitHub plan gates a needed feature (e.g. required reviewers on Environments) | Repository is public, confirmed to unlock this on the free plan (spec.md Assumptions); re-verify if ever made private |
+| GitHub plan gates a needed feature (e.g. required reviewers on Environments, Code Scanning) | Repository is public, confirmed to unlock these on the free plan (spec.md Assumptions); Code Scanning specifically requires the paid GitHub Code Security add-on ($30/active committer/month) on a private repo — re-verify if this repository is ever made private |
 | Rate limiting on a public runner/registry | Traffic volume for a conference demo is trivially within free limits; not mitigated further |
 | DNS/network flakiness for `$APP_URL` | Elastic IP / stable DNS per `docs/aws-setup.md` step 4; bookmark URLs before the talk |
 | A demo branch/PR used for rehearsal pollutes `main`'s history | Demo branches (docs-only, failing-test, fake-secret) are disposable and never merged — delete after rehearsal |
@@ -379,6 +418,8 @@ Short, focused ADRs for the decisions worth defending in front of an experienced
 - [0005 — Rollback strategy](docs/adr/0005-rollback-strategy.md)
 - [0006 — Security tool placement: co-located by pipeline stage](docs/adr/0006-security-tool-placement.md)
 - [0007 — SAST/SCA tool selection: Bandit + pip-audit](docs/adr/0007-sast-sca-tool-selection.md)
+- [0008 — CodeQL integration: decoupled cadence, not a PR gate](docs/adr/0008-codeql-integration.md)
+- [0009 — Periodic image re-scan: active results, not another passive dashboard](docs/adr/0009-image-rescan-active-results.md)
 
 ## Possible Enhancements
 
@@ -392,3 +433,15 @@ justify the setup cost in a two-endpoint conference demo (constitution Principle
   see [research.md D7](specs/001-cicd-devsecops-demo/research.md#d7-cpu-architecture).
 - **Canary/traffic-split promotion** instead of all-or-nothing cutover — not available on a plain
   Docker-on-EC2 setup without adding a load balancer/reverse proxy layer.
+- **ZAP findings uploaded to Code Scanning too** (Trivy's already are). `zap-baseline.py` doesn't
+  natively emit SARIF; the available workarounds (an unofficial third-party converter, or
+  reconfiguring the scan around ZAP's own Automation Framework instead of the simple baseline
+  action) were judged too fragile to ship without testing them end-to-end first — a concise
+  Markdown summary in the Job Summary was implemented instead as the low-risk version of "make
+  findings visible somewhere a human will actually look" (see `docs/retex-webinar.md`).
+- **Org-wide reusable security workflows.** `deploy.yml` is already a reusable workflow
+  (`workflow_call`); extracting the Gitleaks/Bandit/pip-audit/Trivy/ZAP/CodeQL steps the same way, and
+  publishing them from an organization-level `.github` repo, is the standard GitHub-native
+  pattern for other teams to reuse this pipeline's security gates — GitHub has no single
+  community project as centralized as GitLab's `to-be-continuous` for this; the reusable-workflow
+  + org `.github` repo convention is the closest native equivalent.

@@ -263,3 +263,92 @@ ever could — but it would likely **not** have caught the D-listed `pip`-vendor
 which also reported those as "not found"). Trivy inspects the actual image filesystem and caught
 what `pip-audit`-style manifest scanning structurally cannot. Neither tool alone covers what the
 other does — the rationale for running both, not just one.
+
+---
+
+## D11. Adding CodeQL: decoupling scan cadence from analysis rigor
+
+**Decision**: [CodeQL](.github/workflows/codeql.yml) runs a second SAST pass alongside Bandit, but
+on a deliberately different trigger — `push` to `main`, a weekly `schedule`, and manual
+`workflow_dispatch` — never on `pull_request`. See [ADR
+0008](../../docs/adr/0008-codeql-integration.md).
+
+**Rationale**: Bandit is pattern-based and completes in seconds, so it stays inside
+`pr-validation.yml`'s gate for immediate per-PR feedback (D9's co-location logic). CodeQL performs
+dataflow/taint-tracking analysis — deeper, slower, and a poor fit for a merge-blocking gate a
+developer waits on. Rather than forcing one tool to be both fast and exhaustive, the two
+properties are split across two tools running on two different cadences. Results upload to GitHub
+Code Scanning, the same sink already used for Trivy's SARIF report (D9), rather than a second
+bespoke integration.
+
+**Alternatives considered**: Running CodeQL inside `pr-validation.yml` alongside Bandit — rejected,
+would add several minutes to every PR's required checks for a two-endpoint codebase where the
+marginal detection value over Bandit is close to zero; the cost would be paid on every PR whether
+or not the change touches anything CodeQL could usefully analyze. Not adding CodeQL at all — also
+considered, but the decoupled-cadence pattern (fast gate + deferred deep scan) is itself the
+teaching point for the webinar, independent of how much this specific small app benefits from it.
+
+**Known risk, not fully closed**: this decoupling reproduces the D9/§1.4 blind spot
+(`docs/retex-webinar.md`) in a new place — a scan that never blocks anyone and lands in a tab
+nobody is required to open is security theatre by this project's own definition unless someone
+actually reviews it between scheduled runs. Uploading to Code Scanning (a persistent, triaged
+dashboard) is a mitigation, not a fix: a dashboard that is never opened is no better than an
+artifact zip nobody downloads. See [docs/retex-webinar.md
+§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre)
+— left deliberately open rather than declared solved.
+
+---
+
+## D12. Periodic re-scan of the deployed digest, with an active (not passive) result
+
+**Decision**: [`image-rescan.yml`](../../.github/workflows/image-rescan.yml) re-scans the
+currently-deployed digest of both `staging` and `production` on a weekly schedule (plus
+`workflow_dispatch`) — resolved via the same GitHub Deployments API lookup
+`scripts/resolve_deployment_digest.sh` already uses for rollback. Full-severity SARIF uploads to
+Code Scanning as usual, but a fixable HIGH/CRITICAL finding additionally opens (or updates) a
+GitHub Issue, and the issue is closed automatically once a later run no longer reproduces it.
+
+**Rationale**: Trivy in `release.yml` scans an image exactly once, before it is ever deployed
+(build-once, ADR 0004) — deliberately never re-checked later, so that a CVE published after the
+build can never retroactively fail an already-green pipeline (D5). But that design leaves a real
+gap: nothing re-checks what is *actually running* against newly-published CVEs for as long as it
+stays deployed. This closes that gap the same way D11/ADR 0008 closes it for source code
+(decoupled cadence, never blocks) — reusing the pattern rather than inventing a new one.
+
+**Why an issue, not just another Code Scanning row**: D11 already flagged its own decoupled-cadence
+scan as reproducing the D9/§1.4 blind spot — a scan nobody is forced to look at is security
+theatre by this project's own definition. Adding a *third* scan with the same passive-dashboard
+result would repeat that same mistake, and the stakes here are higher than for source-code
+patterns: this is a known, fixable CVE on what is serving real traffic right now, not a
+hypothetical future exploit path. An actively-created, actively-closed GitHub Issue gives the
+finding an owner and a visible lifecycle instead of one more row in a tab that requires someone to
+remember to open it. See [docs/retex-webinar.md
+§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre) —
+this is the closed-loop follow-up to the risk left open there, not a claim that the earlier risk
+is now retroactively fixed for CodeQL too (it isn't; CodeQL still only uploads to Code Scanning).
+
+**Alternatives considered**: Re-scanning on every push to `main` instead of a schedule — rejected,
+the whole point is to catch drift in the *external* vulnerability database against *unchanged*
+deployed code, which a push-triggered scan cannot do (nothing changed). Failing the workflow
+(`exit-code: 1`) to get GitHub's own run-failure notification instead of an issue — rejected,
+indistinguishable in the Actions UI from a real infrastructure failure, and does not carry the
+same persistent, triageable, closeable lifecycle a dedicated issue does.
+
+**Consequences**: a new failure mode to be aware of — `resolve_deployment_digest.sh` requires at
+least one successful GitHub Deployment to exist for the environment; on a freshly-created
+environment with no deployment history yet, this job fails loudly rather than silently skipping,
+consistent with `scripts/rollback.sh`'s existing "fail clearly, never guess" behavior.
+
+**Addendum — `drift-check` job**: `resolve_deployment_digest.sh` only reports what GitHub
+*believes* was deployed, never what is actually running; a manual out-of-band change to a
+container would go unnoticed. Added a second job (not extra steps in `rescan`) that reads the
+running container's real image reference via SSM (new script,
+`scripts/read_deployed_digest.sh` — `docker inspect app --format="{{.Config.Image}}"`,
+read-only) and compares it against the declared digest, same active-issue discipline on mismatch.
+Kept as its own job specifically so `rescan` never needs AWS/SSM credentials — genuinely
+different concern (state drift, not vulnerability content), genuinely different permission
+footprint, same natural pipeline stage as `rescan` so still the same file (D9's placement
+principle). See [ADR 0009's
+addendum](../../docs/adr/0009-image-rescan-active-results.md#addendum-drift-check-job--declared-vs-actually-running).
+Not verified end-to-end against real AWS/EC2 — no credentials/Docker daemon in the sandbox this
+was built in; shell/YAML syntax checked, the actual SSM round-trip is not.

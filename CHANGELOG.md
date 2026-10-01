@@ -1,5 +1,60 @@
 # Changelog
 
+## [1.6.1](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.6.0...cicd-devsecops-demo-v1.6.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* redirect progress messages to stderr in read_deployed_digest.sh ([97a8ebd](https://github.com/eazysec/cicd-devsecops-demo/commit/97a8ebd1625e49f2d7f145c03cee63b33f6f0d0c))
+
+## [1.6.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.5.0...cicd-devsecops-demo-v1.6.0) (2026-09-24)
+
+
+### Features
+
+* add drift-check job (declared digest vs. actually running) ([5f9cbe6](https://github.com/eazysec/cicd-devsecops-demo/commit/5f9cbe6e096a1f4666277122d509196279196b8f))
+* add drift-check job (declared digest vs. actually running) ([d672046](https://github.com/eazysec/cicd-devsecops-demo/commit/d672046f5a5029341a613ad757086a8753ccf117))
+
+## [1.5.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.4.2...cicd-devsecops-demo-v1.5.0) (2026-09-24)
+
+
+### Features
+
+* periodic re-scan of the deployed image, with active results ([2370d86](https://github.com/eazysec/cicd-devsecops-demo/commit/2370d869c58b160a32dcd66276c21c6f4ec81b01))
+* periodic re-scan of the deployed image, with active results ([f1ec1b2](https://github.com/eazysec/cicd-devsecops-demo/commit/f1ec1b2e690de47838406a3f2e7857a47d183a6c))
+
+## [1.4.2](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.4.1...cicd-devsecops-demo-v1.4.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* validate digest format in deploy.sh before remote execution ([88b7330](https://github.com/eazysec/cicd-devsecops-demo/commit/88b7330e5df09b0728f17f5daa544763509f82bf))
+* validate digest format in deploy.sh before remote execution ([0567ef8](https://github.com/eazysec/cicd-devsecops-demo/commit/0567ef8ab354c5fb4e5d9828ea165deb150d1d0d))
+
+## [1.4.1](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.4.0...cicd-devsecops-demo-v1.4.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* declare GITHUB_TOKEN permissions explicitly on every job ([0a83572](https://github.com/eazysec/cicd-devsecops-demo/commit/0a83572b957e7e64784ad46bdca422d4376c4138))
+* declare GITHUB_TOKEN permissions explicitly on every job ([a6281e9](https://github.com/eazysec/cicd-devsecops-demo/commit/a6281e924f9f8ec86b582ff386bd6de0025c5bfd))
+
+## [1.4.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.3.0...cicd-devsecops-demo-v1.4.0) (2026-09-23)
+
+
+### Features
+
+* add CodeQL as a decoupled, non-blocking SAST pass ([e939a47](https://github.com/eazysec/cicd-devsecops-demo/commit/e939a47364a922c7e047b8faf0d54b70647d24d2))
+* add CodeQL as a decoupled, non-blocking SAST pass ([af0a78b](https://github.com/eazysec/cicd-devsecops-demo/commit/af0a78bf69bc3b52cbdfb98f0261191d2adeafce))
+
+## [1.3.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.2.0...cicd-devsecops-demo-v1.3.0) (2026-09-23)
+
+
+### Features
+
+* upload Trivy SARIF to GitHub Code Scanning, summarize ZAP findi… ([ee2bdc0](https://github.com/eazysec/cicd-devsecops-demo/commit/ee2bdc03d8530e5078f20c0808689ad33df05ee2))
+* upload Trivy SARIF to GitHub Code Scanning, summarize ZAP findings in-run ([9540e6c](https://github.com/eazysec/cicd-devsecops-demo/commit/9540e6ccf5df05898591f2f7b4bbe02bdc2e4757))
+
 ## [1.2.0](https://github.com/eazysec/cicd-devsecops-demo/compare/cicd-devsecops-demo-v1.1.2...cicd-devsecops-demo-v1.2.0) (2026-09-22)
 
 
