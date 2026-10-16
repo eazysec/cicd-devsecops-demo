@@ -2,7 +2,7 @@
 
 Ce fichier est la version **détaillée et personnelle** du déroulé live — commandes exactes,
 clics précis, minutage. La version condensée et publique reste le [🎤 Conference
-Runbook](../README.md#-conference-runbook) du README ; les deux racontent la même séquence, celui-
+Runbook](../README.md#conference-runbook) du README ; les deux racontent la même séquence, celui-
 ci descend juste au niveau "que faire concrètement avec les mains". Si les deux divergent un jour,
 le README fait foi pour le *concept* montré à chaque étape, ce fichier pour la *mécanique*.
 
