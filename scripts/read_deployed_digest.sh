@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Read the full image reference (ghcr.io/...@sha256:...) of the container ACTUALLY running on an
-# environment's EC2 instance right now, via SSM — independent of what the GitHub Deployments API
+# environment's EC2 instance right now, via SSM: independent of what the GitHub Deployments API
 # believes was deployed. Read-only: never pulls, never restarts anything.
 #
 # Contract: specs/001-cicd-devsecops-demo/contracts/deploy-script.md#scriptsread_deployed_digestsh-environment
@@ -11,7 +11,7 @@
 # Required environment variables: AWS_REGION, EC2_INSTANCE_ID.
 #
 # Used by image-rescan.yml's drift-check job to compare this against the digest recorded in the
-# GitHub Deployments API (scripts/resolve_deployment_digest.sh) — a mismatch means the instance
+# GitHub Deployments API (scripts/resolve_deployment_digest.sh): a mismatch means the instance
 # was changed outside deploy.yml, or a deployment record doesn't reflect reality.
 set -eu
 
@@ -34,7 +34,7 @@ esac
 echo "read_deployed_digest: sending SSM command to $EC2_INSTANCE_ID to inspect the running container (environment=$environment)" >&2
 
 # .Config.Image is exactly the reference deploy.sh passed to `docker run` (the full
-# ghcr.io/...@sha256:... string) — more direct and unambiguous than fishing through the image's
+# ghcr.io/...@sha256:... string): more direct and unambiguous than fishing through the image's
 # RepoDigests, which is a property of the image, not the container, and can list more than one
 # entry.
 remote_script='docker inspect app --format="{{.Config.Image}}"'

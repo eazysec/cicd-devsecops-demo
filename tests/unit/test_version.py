@@ -44,7 +44,7 @@ def test_valid_full_env():
 )
 def test_valid_semver_with_prerelease_and_build_metadata_accepted(good_version):
     # Regression test: local/dev defaults ("0.0.0-dev", "0.0.0-local") use a pre-release
-    # suffix and MUST validate — this bug crashed every local/demo container at startup
+    # suffix and MUST validate: this bug crashed every local/demo container at startup
     # (gunicorn worker boot failure) before the regex was widened to full SemVer 2.0.0.
     meta = load_from_env({"APP_VERSION": good_version})
     assert meta.app_version == good_version

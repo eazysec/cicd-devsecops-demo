@@ -3,7 +3,7 @@ name: Release
 # The official release chain (brief §7 "Push / merge sur main"): Release Please proposes/cuts a
 # SemVer release from Conventional Commits (D2); only once a release actually exists do we build
 # ONE image, scan it, and promote that single digest through staging then production (Principle
-# I — see docs/adr/0004-build-once-promote.md). A push that is not itself a release (e.g. a
+# I: see docs/adr/0004-build-once-promote.md). A push that is not itself a release (e.g. a
 # merged docs-only PR, which Release Please never bumps a version for) triggers nothing past the
 # first job.
 on:
@@ -74,7 +74,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Principle I: this is the ONLY build+push step in the entire repository. Every
-      # deployment (staging and production) below reuses this step's digest — never rebuilt.
+      # deployment (staging and production) below reuses this step's digest: never rebuilt.
       - name: Build and push (build once)
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
@@ -109,9 +109,9 @@ jobs:
 
       # Findings become persistent, triageable entries in the repo's Security tab (severity,
       # open/fixed/dismissed lifecycle) instead of only existing in a zip nobody opens unless
-      # something already failed elsewhere — the actual gap flagged in docs/retex-webinar.md:
+      # something already failed elsewhere: the actual gap flagged in docs/retex-webinar.md:
       # a scanner that runs but never surfaces its output anywhere a human would look is its
-      # own kind of security theatre. Public-repo only for now — GitHub Code Scanning requires
+      # own kind of security theatre. Public-repo only for now: GitHub Code Scanning requires
       # the paid GitHub Code Security add-on for private repos (see SECURITY.md).
       - name: Upload Trivy SARIF report to Code Scanning
         if: always()
@@ -120,7 +120,7 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy-image-scan
 
-      # Security Gate (D5 policy): only fixable HIGH/CRITICAL findings block promotion — see
+      # Security Gate (D5 policy): only fixable HIGH/CRITICAL findings block promotion: see
       # docs/adr and research.md#d5-vulnerability-scanning-policy-trivy for why an unfixable or
       # newly-published CVE can never turn a previously-green pipeline red overnight.
       - name: Trivy scan (promotion gate)
@@ -138,7 +138,7 @@ jobs:
     needs: [release-please, build-scan-publish]
     if: needs.release-please.outputs.release_created == 'true'
     uses: ./.github/workflows/deploy.yml
-    # A reusable workflow's own job permissions are capped by the CALLING job's permissions —
+    # A reusable workflow's own job permissions are capped by the CALLING job's permissions,
     # without this block, deploy.yml's request for id-token/deployments write is silently
     # downgraded to "none" (discovered via a real failed run: "is only allowed 'deployments:
     # none, id-token: none'"). Must mirror what deploy.yml's own job declares.

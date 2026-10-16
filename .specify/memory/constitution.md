@@ -1,23 +1,10 @@
-<!--
-Sync Impact Report
-Version change: none → 1.0.0 (initial ratification)
-Modified principles: n/a (initial version)
-Added sections: Core Principles (I–VII), Technology & Scope Constraints, Delivery Workflow, Governance
-Removed sections: none
-Templates requiring updates:
-  - .specify/templates/plan-template.md ⚠ pending (will be checked at /speckit-plan time)
-  - .specify/templates/spec-template.md ⚠ pending (will be checked at /speckit-specify time)
-  - .specify/templates/tasks-template.md ⚠ pending (will be checked at /speckit-tasks time)
-Follow-up TODOs: none — all placeholders resolved from the project brief.
--->
-
 # cicd-devsecops-demo Constitution
 
 ## Core Principles
 
 ### I. Build Once, Promote the Same Artifact (NON-NEGOTIABLE)
 A release produces exactly one immutable container image, identified by its registry digest.
-That same digest — never a rebuild, never a re-tag from source — is deployed to staging and,
+That same digest, never a rebuild, never a re-tag from source, is deployed to staging and,
 after verification, promoted unchanged to production. Any pipeline design that rebuilds the
 application between environments is a constitution violation, regardless of convenience.
 Rationale: this is the single architectural property the whole demo exists to prove; diverging
@@ -72,7 +59,7 @@ fail live.
 
 - Application: Python (Flask, chosen for minimal ceremony on stage) exposing `GET /` (human-
   readable status page) and `GET /health` (machine-readable JSON), honoring `PORT`.
-- Quality stack: pytest, pytest-cov, Ruff — fast enough to run synchronously in a live demo.
+- Quality stack: pytest, pytest-cov, Ruff (fast enough to run synchronously in a live demo).
 - Secret scanning: Gitleaks, run on every push/PR; demo scenarios use only fabricated secrets,
   never real credentials.
 - Container registry: GHCR (GitHub Container Registry) unless the planning phase documents a
@@ -103,11 +90,11 @@ fail live.
 
 ## Governance
 
-This constitution supersedes ad-hoc practice for this repository. Amendments are made via the
-`/speckit-constitution` workflow, require a stated rationale, and bump the version per semantic
-versioning (MAJOR: incompatible principle removal/redefinition; MINOR: new principle or materially
-expanded guidance; PATCH: clarification/wording). Any plan, spec, or task list produced by Spec
-Kit commands must be checked against these principles before implementation proceeds; unresolved
+This constitution supersedes ad-hoc practice for this repository. Amendments require a
+stated rationale and bump the version per semantic versioning (MAJOR: incompatible principle
+removal/redefinition; MINOR: new principle or materially expanded guidance; PATCH:
+clarification/wording). Any plan or spec must be checked against these principles before
+implementation proceeds; unresolved
 conflicts are documented and justified in the relevant plan's Complexity Tracking section rather
 than silently overridden. Day-to-day development guidance beyond this constitution lives in
 `README.md`.

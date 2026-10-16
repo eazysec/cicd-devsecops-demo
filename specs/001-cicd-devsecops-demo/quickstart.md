@@ -1,6 +1,6 @@
 # Quickstart: Validate the Feature End-to-End
 
-Scope: local development validation only — running the app, the test suite, and the individual
+Scope: local development validation only, running the app, the test suite, and the individual
 demo scenarios in isolation on your own machine. For the actual live-conference sequence (exact
 commands, timing, what to say at each step), see
 [`docs/roadmapLiveWebinaire.md`](../../docs/roadmapLiveWebinaire.md) instead; this file predates
@@ -25,16 +25,16 @@ curl -s localhost:8080/health | python3 -m json.tool
 "local", "commit": "unknown"}` (or equivalent dev defaults per
 [app-endpoints.md](./contracts/app-endpoints.md)).
 
-## 2. Secret scanning (fake secret scenario — Scenario C)
+## 2. Secret scanning (fake secret scenario: Scenario C)
 
 The fake value MUST still look like a real credential to Gitleaks' default rules: a low-entropy
 placeholder like `AKIAFAKEFAKEFAKEFAKE` or anything containing `EXAMPLE`/`TEST` is silently
 *allowlisted* by Gitleaks' own default config (to avoid flagging AWS's own documentation samples
-that appear all over open-source repos) — so it will NOT trigger a finding, which defeats the
+that appear all over open-source repos), so it will NOT trigger a finding, which defeats the
 demo. Use `scripts/generate-demo-secret.sh` to produce a fresh, random-looking (never real, never
-reused) value — **never hardcode one in a tracked file**: a fixed literal value sitting in a
+reused) value, **never hardcode one in a tracked file**: a fixed literal value sitting in a
 committed file is exactly what GitHub's own push-protection secret scanning is designed to catch,
-and it will block the push of the file containing it (discovered the hard way — an earlier
+and it will block the push of the file containing it (discovered the hard way, an earlier
 version of this doc hardcoded one and got blocked pushing this very file):
 
 ```bash
@@ -46,7 +46,7 @@ gitleaks detect --no-banner --source . --config .gitleaks.toml
 
 **Expected**: Gitleaks exits non-zero. The `aws-access-token` rule always fires (fixed `AKIA...`
 pattern match, not entropy-dependent); a second `generic-api-key` finding on the secret line may
-or may not also appear, depending on the random value's entropy — either way, exit code is
+or may not also appear, depending on the random value's entropy, either way, exit code is
 non-zero and the run is blocked, which is the only thing the demo depends on. Then:
 
 ```bash
@@ -63,7 +63,7 @@ bash scripts/demo-local.sh
 (pip-audit) → secret scan (Gitleaks, if installed, else a visible "skipped: not installed" line) →
 Docker build → Trivy (if installed, else skipped) → `docker run` → `scripts/healthcheck.sh` against
 `localhost:8080/health` → `scripts/smoke-test.sh` → ZAP baseline scan (if its image is already
-cached locally, else skipped). Exits non-zero on the first failing stage, with that stage named —
+cached locally, else skipped). Exits non-zero on the first failing stage, with that stage named,
 Bandit/pip-audit are not optional (installed via `pip install -e ".[dev]"`, same tier as
 ruff/pytest), unlike Gitleaks/Trivy/ZAP which degrade to a skip if not present/cached.
 

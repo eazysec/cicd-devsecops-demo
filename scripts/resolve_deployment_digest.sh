@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Fetch recent GitHub Deployments for an environment and print the previous known-good digest.
-# Pure lookup — makes no infrastructure changes. Used by both scripts/rollback.sh (which then
+# Pure lookup: makes no infrastructure changes. Used by both scripts/rollback.sh (which then
 # deploys the result) and .github/workflows/rollback.yml's resolve job (which then delegates to
 # deploy.yml, so all actual promotion logic stays in one place).
 #

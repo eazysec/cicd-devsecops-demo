@@ -5,9 +5,9 @@
 #
 # Usage: healthcheck.sh <url> <environment> [expected-digest]
 #   url            e.g. https://staging.demo.example/health (the full /health URL)
-#   environment    staging | production | local — must match the "environment" field returned
+#   environment    staging | production | local: must match the "environment" field returned
 #   expected-digest  optional; logged for operator visibility (the deployment record, not this
-#                    endpoint, is the source of truth for digest confirmation — see data-model.md)
+#                    endpoint, is the source of truth for digest confirmation: see data-model.md)
 #
 # Never hangs indefinitely: bounded attempts, bounded per-attempt timeout.
 set -eu

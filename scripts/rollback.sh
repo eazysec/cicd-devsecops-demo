@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Restore an environment to its previous known-good artifact digest. Never rebuilds anything —
+# Restore an environment to its previous known-good artifact digest. Never rebuilds anything,
 # resolves the previous successful GitHub Deployment for the environment
 # (scripts/resolve_deployment_digest.sh), then delegates to deploy.sh with that digest.
 #

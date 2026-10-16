@@ -2,7 +2,7 @@
 #
 # Policy (docs/adr and research.md D5): the pipeline blocks promotion ONLY on
 # CRITICAL/HIGH findings that have a known fix available (`--ignore-unfixed`). A CVE
-# with no fix available can never appear here as a "workaround" — it already doesn't
+# with no fix available can never appear here as a "workaround": it already doesn't
 # block, by policy, so it needs no entry. This file exists ONLY for a reviewed,
 # time-boxed exception to a *fixable* HIGH/CRITICAL finding that the team has
 # deliberately decided not to fix yet (e.g. the fix is not yet compatible with our base
@@ -14,25 +14,25 @@
 #   - a re-review date (exceptions are not permanent)
 #
 # Example (remove once a real exception is needed):
-# CVE-2024-00000 # reviewed 2026-09-22 by @maintainer — fix requires base image bump
+# CVE-2024-00000 # reviewed 2026-09-22 by @maintainer: fix requires base image bump
 #                # scheduled for next release; re-review by 2026-10-22
 
 # Both exceptions below were verified empirically, not just assumed: pulling the exact
 # scanned digest (`docker pull ghcr.io/.../cicd-devsecops-demo@sha256:575dd...`) and
 # inspecting its filesystem confirmed python:3.13-slim itself ships ONLY `pip` (no
-# setuptools) — both findings actually come from code pip vendors internally under its own
-# `pip/_vendor/` directory (`pip/_vendor/msgpack`, `pip/_vendor/pkg_resources` — the latter
+# setuptools): both findings actually come from code pip vendors internally under its own
+# `pip/_vendor/` directory (`pip/_vendor/msgpack`, `pip/_vendor/pkg_resources`: the latter
 # is setuptools' runtime API, which is how the setuptools 70.3.0 fingerprint is detected
 # despite no `setuptools` package or dist-info existing anywhere in the image). Neither is
-# reachable at runtime — nothing in this app imports pip internals.
+# reachable at runtime: nothing in this app imports pip internals.
 
-CVE-2025-47273 # reviewed 2026-09-22 by repo maintainer — fingerprinted from pip's vendored
+CVE-2025-47273 # reviewed 2026-09-22 by repo maintainer, fingerprinted from pip's vendored
                # copy of setuptools' pkg_resources module (pip/_vendor/pkg_resources), not
                # a declared dependency of this app (pyproject.toml lists only
                # flask/gunicorn) and not invoked at runtime. Real fix (strip pip's own
                # footprint from the final image) tracked as a fast-follow; re-review by
                # 2026-10-22.
 
-GHSA-6v7p-g79w-8964 # reviewed 2026-09-22 by repo maintainer — msgpack 1.1.2 is pip's own
+GHSA-6v7p-g79w-8964 # reviewed 2026-09-22 by repo maintainer, msgpack 1.1.2 is pip's own
                # vendored copy (pip/_vendor/msgpack), not a declared or runtime dependency
                # of this app. Same fast-follow and re-review date as CVE-2025-47273 above.

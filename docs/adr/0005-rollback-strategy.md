@@ -13,8 +13,8 @@ and [data-model.md#deploymentrecord](../../specs/001-cicd-devsecops-demo/data-mo
 - **Source of truth for "previous known-good"**: the GitHub Deployments API. Every deploy
   (`deploy.yml`) creates a Deployment + Deployment Status against the target environment,
   including the digest/version in its payload. No bespoke state file or database.
-- **Resolution logic** (`scripts/resolve_previous_digest.py`) is a pure function — no network
-  calls — that picks the most recent `status == "success"` record, excluding the current/failing
+- **Resolution logic** (`scripts/resolve_previous_digest.py`) is a pure function, no network
+  calls, that picks the most recent `status == "success"` record, excluding the current/failing
   one. It is unit-tested (`tests/unit/test_resolve_previous_digest.py`) without any live
   infrastructure.
 - **Two entrypoints, one mechanism**:
@@ -37,5 +37,5 @@ indefinitely), and treat "rollback target too old to exist" as a documented, sur
 ## Consequences
 
 - Rollback is fully testable without live AWS/GitHub infrastructure (the resolution logic), while
-  the actual redeploy reuses `deploy.yml`'s already-verified path — no second, divergent
+  the actual redeploy reuses `deploy.yml`'s already-verified path, no second, divergent
   "rollback deploy" implementation to keep in sync.

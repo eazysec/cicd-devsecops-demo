@@ -1,4 +1,4 @@
-# ADR 0006: Security tool placement — co-located by pipeline stage
+# ADR 0006: Security tool placement, co-located by pipeline stage
 
 **Status**: Accepted (2026-09-23)
 
@@ -18,7 +18,7 @@ post-staging-deploy). No `security.yml`. No `security`/`quality` job split.
 
 ## Rationale
 
-- Each tool's natural trigger is a different artifact type (source / image / running instance) —
+- Each tool's natural trigger is a different artifact type (source / image / running instance),
   forcing them into one file means one workflow reacting to three unrelated event types, or a
   reusable-workflow indirection that adds a layer without removing complexity.
 - A `security`/`quality` job split would blur a more important distinction: mandatory (Gitleaks,
@@ -33,6 +33,6 @@ post-staging-deploy). No `security.yml`. No `security`/`quality` job split.
 - Job/workflow names carry both signals: security tools are named to say so explicitly (e.g.
   "Quality & Security Gate: Tests, SAST, Dependency Scan"), even though they're not physically
   grouped in their own file or job.
-- Anyone auditing "what security controls exist" must read three workflow files instead of one —
+- Anyone auditing "what security controls exist" must read three workflow files instead of one,
   accepted trade-off; `SECURITY.md` and this ADR exist precisely to give that reader a single
   place to start instead.

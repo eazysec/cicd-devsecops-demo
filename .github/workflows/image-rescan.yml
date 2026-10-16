@@ -1,11 +1,11 @@
 name: Image Re-scan (deployed digest)
 
 # Trivy in release.yml scans the image exactly once, before it's ever deployed (build-once,
-# ADR 0004) — deliberately never re-checked later (research.md D5: a pipeline must not go red
+# ADR 0004): deliberately never re-checked later (research.md D5: a pipeline must not go red
 # overnight for a CVE published after a build, with no code change of our own). But that means
 # nothing ever re-checks what's ACTUALLY deployed against newly-published CVEs for as long as it
 # stays live. This workflow closes that gap the same way CodeQL does for source code (ADR 0008:
-# decoupled cadence, never blocks) — except the result is an ACTIVE GitHub Issue, not another
+# decoupled cadence, never blocks): except the result is an ACTIVE GitHub Issue, not another
 # passive Code Scanning row, specifically to avoid reproducing the "scan nobody looks at" blind
 # spot a third time (docs/retex-webinar.md §1.4/§1.5) on a signal that matters more than most:
 # a known, fixable CVE on what's serving real traffic right now.
@@ -62,7 +62,7 @@ jobs:
           category: trivy-image-rescan-${{ matrix.environment }}
 
       # Same severity/ignore-unfixed/.trivyignore policy as release.yml's promotion gate
-      # (research.md D5) — but exit-code never fails the job (continue-on-error catches it);
+      # (research.md D5): but exit-code never fails the job (continue-on-error catches it);
       # its outcome only decides whether the issue step below runs.
       - name: Trivy scan (fixable HIGH/CRITICAL only, decides the issue)
         id: gate
@@ -145,7 +145,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing.number,
-                body: 'No longer reproducing as of this run — closing.',
+                body: 'No longer reproducing as of this run, closing.',
               });
               await github.rest.issues.update({
                 owner: context.repo.owner,
@@ -159,7 +159,7 @@ jobs:
     name: "Drift check: declared vs. running (${{ matrix.environment }})"
     # Separate job, not extra steps in `rescan` above: this is a genuinely different concern
     # (declared state vs. actual state, not vulnerability content) with a genuinely different
-    # permission need (AWS/SSM access) — co-located here because both share the identical
+    # permission need (AWS/SSM access): co-located here because both share the identical
     # natural pipeline stage (periodic, post-deploy, against whatever's currently live), same
     # reasoning as D9, but kept in its own job so `rescan` never needs AWS credentials at all.
     strategy:
@@ -170,7 +170,7 @@ jobs:
     environment: ${{ matrix.environment }} # for this environment's AWS_ROLE_ARN/AWS_REGION/EC2_INSTANCE_ID
     timeout-minutes: 10
     permissions:
-      id-token: write # OIDC — no long-lived AWS credentials anywhere (research.md D1)
+      id-token: write # OIDC, no long-lived AWS credentials anywhere (research.md D1)
       contents: read
       issues: write
     env:
@@ -223,7 +223,7 @@ jobs:
             if (declared !== running) {
               const body = [
                 `The image actually running on **${environment}** does not match what the GitHub`,
-                `Deployments API recorded as the last successful deployment — either the instance`,
+                `Deployments API recorded as the last successful deployment, either the instance`,
                 `was changed outside \`deploy.yml\`, or a deployment record doesn't reflect reality.`,
                 ``,
                 `- Declared (GitHub Deployments API): \`${declared}\``,
@@ -252,7 +252,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing.number,
-                body: 'No longer reproducing as of this run — closing.',
+                body: 'No longer reproducing as of this run, closing.',
               });
               await github.rest.issues.update({
                 owner: context.repo.owner,

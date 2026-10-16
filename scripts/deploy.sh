@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Promote an immutable image digest to one environment. No build, no push, no mutation of any
-# environment other than the one named — this is the ONE place that "docker run"s the app.
+# environment other than the one named: this is the ONE place that "docker run"s the app.
 #
 # Contract: specs/001-cicd-devsecops-demo/contracts/deploy-script.md
 #
@@ -33,7 +33,7 @@ esac
 
 # `digest` reaches this script from a workflow_dispatch free-text input (deploy.yml, and
 # indirectly rollback.yml via resolve_deployment_digest.sh) as well as the trusted automated
-# build output — unlike `environment` above, nothing upstream constrains its format. It is
+# build output: unlike `environment` above, nothing upstream constrains its format. It is
 # embedded unquoted into a shell command string that AWS SSM executes on the EC2 instance
 # (the `docker pull ${image_ref}` line below), so an unvalidated value here is a command
 # injection path into that instance, not just a cosmetic input check. A `case`/glob pattern

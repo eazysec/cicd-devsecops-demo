@@ -1,13 +1,13 @@
 name: Deploy
 
 # Reusable promotion workflow (brief §31: avoid duplicating deploy logic across workflows).
-# Called twice by release.yml (staging, then production) with the SAME digest — this file
+# Called twice by release.yml (staging, then production) with the SAME digest: this file
 # itself has no idea whether it's a first deploy or a promotion, it just places one immutable
 # digest into one environment. Also directly workflow_dispatch-able for a manual
 # promote/redeploy (FR-022) without needing a new commit.
 #
 # `environment: ${{ inputs.environment }}` on the job is what makes GitHub apply that
-# environment's protection rules (production requires a reviewer — see
+# environment's protection rules (production requires a reviewer, see
 # docs/github-environments-setup.md) and exposes its secrets/variables.
 on:
   workflow_call:
@@ -42,7 +42,7 @@ on:
         type: string
         default: ""
       debug:
-        description: "Print decoded OIDC token claims before assuming the AWS role (troubleshooting only — see docs/aws-setup.md's OIDC gotcha)"
+        description: "Print decoded OIDC token claims before assuming the AWS role (troubleshooting only, see docs/aws-setup.md's OIDC gotcha)"
         required: false
         type: boolean
         default: false
@@ -61,7 +61,7 @@ jobs:
     environment: ${{ inputs.environment }}
     timeout-minutes: 10
     permissions:
-      id-token: write # OIDC — no long-lived AWS credentials anywhere (research.md D1)
+      id-token: write # OIDC, no long-lived AWS credentials anywhere (research.md D1)
       contents: read
       deployments: write
     steps:
@@ -90,8 +90,8 @@ jobs:
             });
             core.setOutput('deployment_id', deployment.data.id);
 
-      # Opt-in only (workflow_dispatch "debug" input, default false — see
-      # docs/aws-setup.md's OIDC gotcha) — not something every deploy should pay for or have
+      # Opt-in only (workflow_dispatch "debug" input, default false, see
+      # docs/aws-setup.md's OIDC gotcha): not something every deploy should pay for or have
       # noisy logs from. Prints the actual claims of the OIDC token this job requests, so
       # they can be compared directly against the AWS role's trust policy instead of
       # guessing, without needing to re-paste this step in by hand each time.
@@ -124,12 +124,12 @@ jobs:
         run: scripts/smoke-test.sh "${{ vars.APP_URL }}"
 
       # DAST (spec.md, research.md D9): only against staging, only on a verified-healthy
-      # deploy, and deliberately informational (fail_action defaults to false) — not every
+      # deploy, and deliberately informational (fail_action defaults to false): not every
       # security signal should be a hard auto-block, see ADR 0006/research.md D9 for why this
       # one specifically stays a report rather than a gate. Findings land in a build artifact
-      # (allow_issue_writing disabled — no GitHub Issue spam on every staging deploy, and no
+      # (allow_issue_writing disabled: no GitHub Issue spam on every staging deploy, and no
       # `issues: write` permission needed).
-      - name: DAST — OWASP ZAP baseline scan (staging only, informational)
+      - name: DAST with OWASP ZAP baseline scan (staging only, informational)
         if: inputs.environment == 'staging' && steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
         uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25  # v0.15.0
         with:
@@ -141,17 +141,17 @@ jobs:
 
       # Closes the gap identified in docs/retex-webinar.md: a scanner whose findings only
       # exist in a zip nobody opens is its own kind of security theatre. Pastes ZAP's own
-      # markdown report verbatim into the run's summary — no custom parsing of ZAP's JSON
-      # schema (untested against a real report from this sandbox, so deliberately avoided as a
-      # risk), just whatever ZAP itself already formats. Never fails the job either way.
+      # markdown report verbatim into the run's summary: no custom parsing of ZAP's JSON
+      # schema (not tested against a real report, so avoided as a risk), just whatever ZAP
+      # itself already formats. Never fails the job either way.
       - name: Add ZAP findings to the job summary
         if: inputs.environment == 'staging' && steps.deploy.outcome == 'success' && steps.smoke.outcome == 'success'
         run: |
-          echo "### DAST — OWASP ZAP baseline scan (staging)" >> "$GITHUB_STEP_SUMMARY"
+          echo "### DAST: OWASP ZAP baseline scan (staging)" >> "$GITHUB_STEP_SUMMARY"
           if [ -f report_md.md ]; then
             cat report_md.md >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Report file not found — see the \`zap-baseline-report\` artifact instead." >> "$GITHUB_STEP_SUMMARY"
+            echo "Report file not found, see the \`zap-baseline-report\` artifact instead." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Mark deployment successful
@@ -169,7 +169,7 @@ jobs:
 
       # Automatic rollback (spec.md US5, Acceptance Scenario 1): if deploy or the smoke test
       # failed AND this is production, self-heal to the previous known-good digest before
-      # failing the job — a bad promotion never sits in production waiting for a human to
+      # failing the job: a bad promotion never sits in production waiting for a human to
       # notice (constitution Principle V: deterministic, reproducible demo).
       - name: Mark deployment failed
         if: steps.deploy.outcome != 'success' || steps.smoke.outcome != 'success'

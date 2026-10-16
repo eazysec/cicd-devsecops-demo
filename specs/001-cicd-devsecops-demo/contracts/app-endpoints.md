@@ -4,7 +4,7 @@
 
 **Purpose**: Human-readable status page for the projector (FR-001, FR-004).
 
-**Response**: `200 text/html`, always — this endpoint never reflects the app's own health as an
+**Response**: `200 text/html`, always, this endpoint never reflects the app's own health as an
 HTTP status (a broken status page would be a worse demo failure than a page that honestly shows
 `status: unhealthy`); health is communicated *within* the page and via `/health`.
 
@@ -18,7 +18,7 @@ HTTP status (a broken status page would be a worse demo failure than a page that
 (FR-002).
 
 **Response**: `200 application/json` when healthy. There is no dependency that can make this
-service "unhealthy" at the application layer (no DB, no external call) — the endpoint always
+service "unhealthy" at the application layer (no DB, no external call), the endpoint always
 returns `status: "healthy"` once the process is up; a `503` is only ever produced by the process
 not running at all (connection refused), which is exactly what the deploy health check needs to
 distinguish "old container still up" from "new container serving."
@@ -39,7 +39,7 @@ distinguish "old container still up" from "new container serving."
 |---|---|
 | `status` | literal `"healthy"` |
 | `application` | literal `"cicd-devsecops-demo"` |
-| `version` | matches `^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$` — full SemVer 2.0.0 core with optional pre-release/build metadata (release versions are always bare `X.Y.Z`; local/dev defaults use a `-dev`/`-local` pre-release suffix, which must validate too — see [data-model.md](../data-model.md#versionmetadata)) |
+| `version` | matches `^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$`, full SemVer 2.0.0 core with optional pre-release/build metadata (release versions are always bare `X.Y.Z`; local/dev defaults use a `-dev`/`-local` pre-release suffix, which must validate too, see [data-model.md](../data-model.md#versionmetadata)) |
 | `environment` | one of `staging`, `production`, `local` |
 | `commit` | non-empty short SHA (or `"unknown"` in a from-source dev run with no Git metadata injected) |
 
@@ -48,6 +48,6 @@ distinguish "old container still up" from "new container serving."
 
 ## Backward compatibility
 
-Both endpoints are additive-only for the lifetime of this demo (no versioning scheme needed — a
+Both endpoints are additive-only for the lifetime of this demo (no versioning scheme needed, a
 single, intentionally small service). A breaking change to the `/health` JSON shape would be a
 Conventional Commit `BREAKING CHANGE`, per FR-024.

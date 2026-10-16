@@ -6,7 +6,7 @@ is unit-testable without a live GitHub API call. scripts/rollback.sh fetches the
 records (via `gh api`) and pipes them, as JSON, into this script.
 
 Input shape (one record per successful/failed/in-progress GitHub Deployment, newest first or in
-any order — this module sorts by created_at itself):
+any order, this module sorts by created_at itself):
     [
       {"id": 123, "created_at": "2026-09-22T10:00:00Z", "status": "success",
        "payload": {"digest": "sha256:...", "version": "1.0.1"}},
@@ -40,7 +40,7 @@ def resolve_previous_digest(
 ) -> ResolvedDeployment:
     """Return the most recent successful deployment, excluding `exclude_id` (the current one).
 
-    Raises NoKnownGoodDeploymentError if no successful record remains — callers must not guess.
+    Raises NoKnownGoodDeploymentError if no successful record remains, callers must not guess.
     """
     candidates = [
         r

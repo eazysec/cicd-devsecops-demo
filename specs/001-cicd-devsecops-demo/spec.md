@@ -8,7 +8,7 @@
 
 **Input**: User description: "Full CI/CD DevSecOps live-demo pipeline: Flask app, dynamic
 policy-based GitHub Actions pipeline, security gates, build-once/promote, staging/production
-deployment, rollback, conference runbook" — expanded from a detailed French brief covering the
+deployment, rollback, conference runbook", expanded from a detailed French brief covering the
 full commit-to-production lifecycle, dynamic/policy-based pipeline execution, mandatory security
 gates, SemVer + Conventional Commits release automation, build-once/promote-the-same-artifact,
 GHCR, Trivy scanning, GitHub Environments for staging/production, health checks, smoke tests,
@@ -24,7 +24,7 @@ container image is built and scanned, deployed to staging, verified, promoted **
 production, and verified again. The live status page visibly changes from the old version to the
 new one.
 
-**Why this priority**: This is the spine of the entire demo — every other scenario is a variation
+**Why this priority**: This is the spine of the entire demo, every other scenario is a variation
 or a failure branch of this one. Without this working end-to-end, nothing else matters.
 
 **Independent Test**: Merge a small application fix to `main` and observe, without any other
@@ -53,7 +53,7 @@ SHA.
 ### User Story 2 - Documentation-Only Change Skips Irrelevant Gates (Priority: P1)
 
 A developer changes only `README.md`. The pipeline visibly runs the minimal relevant checks
-(secret scan, docs/markdown lint) and explicitly skips — with a stated reason, not silently —
+(secret scan, docs/markdown lint) and explicitly skips, with a stated reason, not silently,
 unit tests, coverage, Docker build, image scan, and deployment.
 
 **Why this priority**: This is the single clearest illustration of policy-based dynamic execution
@@ -81,7 +81,7 @@ security scanning still ran and passed.
 ### User Story 3 - Secret Detected Blocks the Pipeline (Priority: P1)
 
 A developer accidentally commits a fake credential. Secret scanning fails, the pipeline shows a
-red/blocked security gate, and the PR cannot be merged — no override available to the author.
+red/blocked security gate, and the PR cannot be merged, no override available to the author.
 
 **Why this priority**: This is the project's core security teaching point (Scenario C) and a
 constitutional non-negotiable (Principle II). It must be demonstrably impossible for the author
@@ -89,7 +89,7 @@ of the offending commit to wave it through.
 
 **Independent Test**: Push a branch containing a clearly fake, purpose-built secret pattern (e.g.
 a dummy AWS-style key) and confirm the secret-scanning check fails, is marked required, and blocks
-the PR merge button — independent of whether any other job passes.
+the PR merge button, independent of whether any other job passes.
 
 **Acceptance Scenarios**:
 
@@ -183,7 +183,7 @@ healthy, with the action recorded in the deployment history.
 
 ## Requirements *(mandatory)*
 
-### Functional Requirements — Application
+### Functional Requirements: Application
 
 - **FR-001**: The demo application MUST expose `GET /`, a human-readable status page showing at
   minimum: the app title, project name (`cicd-devsecops-demo`), application version, environment
@@ -195,7 +195,7 @@ healthy, with the action recorded in the deployment history.
 - **FR-004**: The status page MUST remain legible when projected (large type, high contrast,
   minimal clutter).
 
-### Functional Requirements — Quality Gates
+### Functional Requirements: Quality Gates
 
 - **FR-005**: The pipeline MUST run automated unit tests and endpoint tests for every application
   code change.
@@ -207,7 +207,7 @@ healthy, with the action recorded in the deployment history.
   small change).
 - **FR-009**: A failing required quality-gate check MUST block the Pull Request from being merged.
 
-### Functional Requirements — Security Gates
+### Functional Requirements: Security Gates
 
 - **FR-010**: The pipeline MUST run secret scanning on every push and every Pull Request,
   regardless of change type (docs-only included).
@@ -222,7 +222,7 @@ healthy, with the action recorded in the deployment history.
   justification), and MUST NOT be triggerable by an unreviewed change from the same PR that
   introduces the finding.
 
-### Functional Requirements — Dynamic / Policy-Based Pipeline
+### Functional Requirements: Dynamic / Policy-Based Pipeline
 
 - **FR-015**: The pipeline MUST classify each change (by changed file paths and/or commit
   metadata) into at least: documentation-only, application change, and infrastructure/pipeline
@@ -236,7 +236,7 @@ healthy, with the action recorded in the deployment history.
 - **FR-018**: Every skipped step MUST be visibly reported as skipped along with the reason,
   never silently omitted from the pipeline's summary.
 
-### Functional Requirements — GitHub Events & Git Strategy
+### Functional Requirements: GitHub Events & Git Strategy
 
 - **FR-019**: A push to a non-`main` working branch MUST trigger fast feedback checks scoped to
   what changed.
@@ -250,7 +250,7 @@ healthy, with the action recorded in the deployment history.
   happens on short-lived branches merged via reviewed Pull Requests, and required status checks
   gate the merge.
 
-### Functional Requirements — Versioning & Release
+### Functional Requirements: Versioning & Release
 
 - **FR-024**: The system MUST derive version bumps from Conventional Commit types on `main`
   following SemVer (`fix` → PATCH, `feat` → MINOR, breaking change → MAJOR), with no manual
@@ -261,7 +261,7 @@ healthy, with the action recorded in the deployment history.
   traceable, i.e. given a running environment, the exact commit and release that produced it MUST
   be discoverable from the running application and/or the registry/release metadata.
 
-### Functional Requirements — Build, Artifact, Registry
+### Functional Requirements: Build, Artifact, Registry
 
 - **FR-027**: The pipeline MUST build the application's container image at most once per release.
 - **FR-028**: The built image MUST be pushed to a container registry, tagged with at least the
@@ -272,7 +272,7 @@ healthy, with the action recorded in the deployment history.
 - **FR-031**: The project MUST build and run correctly on a local developer machine without any
   CI or cloud dependency.
 
-### Functional Requirements — Vulnerability Scanning
+### Functional Requirements: Vulnerability Scanning
 
 - **FR-032**: Every built image MUST be scanned for known vulnerabilities before it is eligible
   for promotion to staging.
@@ -282,14 +282,14 @@ healthy, with the action recorded in the deployment history.
   vulnerabilities with no available fix, so that a newly published CVE on the day of the
   conference cannot silently or unpredictably fail the pipeline.
 
-### Functional Requirements — Environments, Staging, Production
+### Functional Requirements: Environments, Staging, Production
 
 - **FR-035**: The system MUST model at least `staging` and `production` as distinct environments
   with separate credentials, variables, and URLs.
 - **FR-036**: Staging deployment MUST be followed by an automated health check and smoke test
   before the artifact is eligible for promotion.
 - **FR-037**: Production MUST receive the exact same artifact digest that was validated in
-  staging — never a rebuilt or re-tagged equivalent.
+  staging, never a rebuilt or re-tagged equivalent.
 - **FR-038**: The system MUST be able to demonstrate, on demand, that the digest running in
   staging and the digest running in production for a given release are identical.
 - **FR-039**: Production deployment MUST be followed by an automated health check and smoke
@@ -297,7 +297,7 @@ healthy, with the action recorded in the deployment history.
 - **FR-040**: GitHub Actions credentials/tokens used for deployment MUST follow least privilege
   (scoped per job/environment, no broader than required).
 
-### Functional Requirements — Rollback
+### Functional Requirements: Rollback
 
 - **FR-041**: The system MUST be able to redeploy a previously built, known-good artifact
   (identified by digest or version) to production without rebuilding it.
@@ -306,7 +306,7 @@ healthy, with the action recorded in the deployment history.
 - **FR-043**: If the chosen deployment platform limits any rollback property described above, the
   limitation MUST be documented along with the best realistic alternative.
 
-### Functional Requirements — Documentation, Runbook, Determinism
+### Functional Requirements: Documentation, Runbook, Determinism
 
 - **FR-044**: The repository MUST include a Mermaid diagram of the complete pipeline
   (Developer → Branch → PR → Gates → main → Release → Build Once → Scan → Registry → Staging →
@@ -316,7 +316,7 @@ healthy, with the action recorded in the deployment history.
   strategy, CI/CD events and pipelines, versioning/release automation, registry, staging,
   production, security, the dynamic pipeline policy, required secrets/variables, the deployment
   platform, rollback, troubleshooting, the Conference Runbook, and the Emergency Demo Plan.
-- **FR-046**: The README MUST include a "🎤 Conference Runbook" section with a 10–15 minute
+- **FR-046**: The README MUST include a "Conference Runbook" section with a 10–15 minute
   primary scenario, where each step states what is shown, the concept it teaches, the exact
   command run, the expected result, and the recovery plan if it fails.
 - **FR-047**: The repository MUST include a local, network-independent Emergency Demo Plan
@@ -383,7 +383,7 @@ healthy, with the action recorded in the deployment history.
 
 - The deployment platform (Render vs. an alternative) is a technical/architectural decision, not
   a business-scope decision; it is made and justified as an ADR during the planning phase against
-  the criteria in the brief (immutable digest deploys, staging/production separation, rollback,
+  the criteria in the requirements (immutable digest deploys, staging/production separation, rollback,
   cost, reliability, conference-friendliness), not asked as a clarification here.
 - Likewise, the specific release-automation tool (e.g. semantic-release vs. Release Please vs. a
   minimal custom script) is decided and justified as an ADR during planning; the requirement here

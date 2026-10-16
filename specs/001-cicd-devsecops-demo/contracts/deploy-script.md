@@ -11,12 +11,12 @@ for manual/emergency use from an operator's laptop with AWS credentials.
 - `digest`: full `sha256:...` digest of the image to run (never a mutable tag)
 
 **Required environment variables** (provided by the calling workflow from GitHub
-Environment secrets/variables — see [data-model.md](../data-model.md#environment-config-not-data)):
+Environment secrets/variables, see [data-model.md](../data-model.md#environment-config-not-data)):
 `AWS_REGION`, `EC2_INSTANCE_ID`, `APP_URL`.
 
 **Behavior**:
 1. Validates `environment` (`staging`/`production` only) and `digest` (must match
-   `sha256:` + 64 lowercase hex characters) before using either — `digest` in particular is
+   `sha256:` + 64 lowercase hex characters) before using either, `digest` in particular is
    embedded unquoted into the shell command AWS SSM executes on the instance, and can arrive
    from an operator-supplied `workflow_dispatch` input, not only the trusted automated build
    output, so this is a command-injection guard, not just a format check.
@@ -32,7 +32,7 @@ Environment secrets/variables — see [data-model.md](../data-model.md#environme
 6. Exits non-zero on any failure (SSM failure, timeout, or health-check failure), with a clear
    message identifying which stage failed.
 
-**Idempotency**: Running the same `(environment, digest)` pair twice is safe — it just redeploys
+**Idempotency**: Running the same `(environment, digest)` pair twice is safe, it just redeploys
 the same image.
 
 **Explicitly out of scope**: no build step, no image push, no mutation of anything but the named
@@ -43,13 +43,13 @@ environment (enforced by the calling workflow's OIDC role scoping, not by the sc
 
 Read-only: sends an `AWS-RunShellScript` SSM document to `EC2_INSTANCE_ID` running
 `docker inspect app --format="{{.Config.Image}}"`, polls for completion the same way
-`deploy.sh` does, and prints the resulting `ghcr.io/...@sha256:...` reference — the exact
+`deploy.sh` does, and prints the resulting `ghcr.io/...@sha256:...` reference, the exact
 reference the running container was created with, straight from Docker, not from any GitHub
 record. Never pulls, never restarts, never mutates anything. Fails clearly (no fallback guess) if
 the SSM command doesn't reach `Success`, or if `app` isn't running (empty output).
 
 Used by `image-rescan.yml`'s `drift-check` job to compare this against
-`scripts/resolve_deployment_digest.sh`'s result — a mismatch means the instance was changed
+`scripts/resolve_deployment_digest.sh`'s result, a mismatch means the instance was changed
 outside `deploy.yml`, or a GitHub Deployment record doesn't reflect reality.
 
 ## `scripts/rollback.sh <environment>`
@@ -64,7 +64,7 @@ deployment exists for that environment (Edge Cases in spec.md).
 
 Retries `GET <url>` with a bounded number of attempts and backoff (default: 10 attempts, 3s
 apart, i.e. ≤30s total) until it gets `200` with a JSON body whose `environment` field matches,
-and — if `expected-digest` is passed — whose deployment is confirmed via the corresponding GitHub
+and, if `expected-digest` is passed, whose deployment is confirmed via the corresponding GitHub
 Deployment record (the `/health` payload itself does not need to echo the digest; the workflow
 already knows what it just deployed). Non-zero exit and a clear message on timeout; never hangs
 indefinitely (Edge Cases in spec.md).

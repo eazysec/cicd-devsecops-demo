@@ -21,6 +21,7 @@ dist/
 .claude/
 .specify/*
 !.specify/memory/
+.specify/memory/.constitution-template.json
 
 # Env files (never commit real secrets)
 .env

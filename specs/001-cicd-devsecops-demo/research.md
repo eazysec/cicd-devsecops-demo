@@ -8,27 +8,26 @@ Constitution references: [[constitution]] (`.specify/memory/constitution.md`) Pr
 ## D1. Deployment platform: staging & production
 
 **Decision**: Two persistent AWS EC2 instances (one per environment, `t3.micro`), each running the
-Docker Engine, deployed to via **AWS Systems Manager (SSM) Run Command** — no SSH, no long-lived
+Docker Engine, deployed to via **AWS Systems Manager (SSM) Run Command**, no SSH, no long-lived
 AWS keys. GitHub Actions authenticates to AWS with **OIDC** (`aws-actions/configure-aws-credentials`)
 and assumes a narrowly-scoped IAM role (permissions limited to `ssm:SendCommand` /
 `ssm:GetCommandInvocation` against the two named instances). The deploy command is always
 `docker rm -f app || true && docker run -d --name app -p 80:8080 --restart unless-stopped
 ghcr.io/eazysec/cicd-devsecops-demo@sha256:<digest>`; rollback is the identical command with the
-previous digest. Images are pulled directly from the **public** GHCR package — no registry
+previous digest. Images are pulled directly from the **public** GHCR package, no registry
 credential needs to live on the instance at all.
 
 **Rationale**:
-- **This decision was made by the user**, who already has an AWS account and asked for AWS Free
-  Tier explicitly, overriding the brief's original Render suggestion — see the recorded
-  clarification in this feature's history.
-- AWS **App Runner** — the most Render-like managed option — stops accepting new customers as of
+- **AWS Free Tier was chosen explicitly**, since an AWS account was already available, overriding
+  the original Render suggestion.
+- AWS **App Runner**, the most Render-like managed option, stops accepting new customers as of
   2026‑04‑30 (confirmed via AWS documentation search, current as of this research), so it is not a
   viable choice for a project starting now.
 - AWS **Fargate** has no free-tier allowance at all (billed from the first second); it also adds
   ECS cluster/service/task-definition ceremony that buys little for a single small container.
 - AWS **Lambda** container images are billed under a genuinely perpetual free tier (1M requests +
   400k GB-s/month) and support digest-pinned deployment, but (a) they **require** the image to
-  live in Amazon ECR, not GHCR — forcing a second registry and extra push/auth plumbing — and (b)
+  live in Amazon ECR, not GHCR, forcing a second registry and extra push/auth plumbing, and (b)
   running Flask on Lambda needs an adapter layer (e.g. AWS Lambda Web Adapter), which is an
   implementation detail purely to satisfy the hosting platform and would distract from the CI/CD
   narrative on stage.
@@ -42,24 +41,24 @@ credential needs to live on the instance at all.
   static AWS access key pair would.
 
 **Alternatives considered**:
-- *Render (Starter, paid)* — simplest control-plane, deploy-by-digest and rollback are first-class
-  Render features; rejected only because the user has an AWS account and asked for AWS Free Tier.
-- *Google Cloud Run* — best-in-class native digest/revision rollback and traffic splitting;
+- *Render (Starter, paid)*: simplest control-plane, deploy-by-digest and rollback are first-class
+  Render features; rejected only because an AWS account was already available and AWS Free Tier was preferred.
+- *Google Cloud Run*: best-in-class native digest/revision rollback and traffic splitting;
   rejected for the same reason (user preference for AWS + existing account).
-- *AWS Lightsail Containers* — managed and Render-like, but no perpetual free tier and its image
+- *AWS Lightsail Containers*: managed and Render-like, but no perpetual free tier and its image
   distribution model (push via `lightsail push-container-image` into its own private registry, or
   reference a public image) is less standard than EC2 + Docker and less documented for
   digest-pinned promote/rollback.
-- *EC2 with SSH deploy key* — simpler IAM setup than OIDC+SSM, but leaves a static credential in
+- *EC2 with SSH deploy key*: simpler IAM setup than OIDC+SSM, but leaves a static credential in
   GitHub Secrets and an open inbound port; rejected on least-privilege/security grounds given the
   constitution explicitly calls this out.
-- *Single EC2 instance hosting both environments as two containers behind a reverse proxy* —
-  cheaper, but weakens the staging/production separation the brief calls a first-class concept
+- *Single EC2 instance hosting both environments as two containers behind a reverse proxy*,
+  cheaper, but weakens the staging/production separation the requirements call a first-class concept
   (separate credentials, blast radius); rejected as false economy for ~$7–8/month of savings.
 
 **Cost note**: `t3.micro` × 2 is AWS Free-Tier eligible (750 hrs/month combined limit) for the
 first 12 months of an AWS account; if this account is past that window, actual cost is
-≈$15/month combined (documented in README cost section) — still within "free or very low cost."
+≈$15/month combined (documented in README cost section), still within "free or very low cost."
 
 **Determinism mitigations**: instances are always-on (no cold start to manage live); SSM Run
 Command has a bounded timeout with explicit success/failure status polled by the workflow (FR-039
@@ -77,17 +76,17 @@ single package version.
 
 **Rationale**: Release Please's "Release PR" model is more demo-friendly than semantic-release's
 immediate-on-merge model: the bot opens/updates a visible `chore(main): release 1.0.1` PR as
-commits land, and the presenter merges that PR live as an explicit, visible, low-risk step — a
+commits land, and the presenter merges that PR live as an explicit, visible, low-risk step, a
 better teaching moment for "release is a deliberate action driven by Conventional Commits," and
 more deterministic (nothing publishes until that merge happens, so there's no race with other
 on-stage actions). It also needs no Node.js plugin ecosystem or `.npmrc`/publish credentials for a
 Python project, keeping the pipeline's dependency surface smaller (Principle VII).
 
 **Alternatives considered**:
-- *semantic-release* — powerful and widely used, but immediate-publish-on-merge is a worse fit for
+- *semantic-release*: powerful and widely used, but immediate-publish-on-merge is a worse fit for
   a live demo (less visible/controllable moment) and its plugin config is heavier for a non-npm
   project.
-- *Manual `bump2version`/hand-edited version* — rejected: violates FR-024 (no manual version
+- *Manual `bump2version`/hand-edited version*: rejected: violates FR-024 (no manual version
   editing) and Principle VI (traceability must be mechanical, not a human remembering to bump a
   file).
 
@@ -100,7 +99,7 @@ push.
 
 **Rationale**: Free for public repositories, authenticates in-workflow with the ambient
 `GITHUB_TOKEN` (no extra PAT/secret to manage), and a public package means the EC2 hosts need zero
-registry credentials to pull — the smallest possible secret surface for D1's deploy step.
+registry credentials to pull, the smallest possible secret surface for D1's deploy step.
 
 **Alternatives considered**: Docker Hub (extra account/secret, rate limits on anonymous pulls);
 Amazon ECR (would remove the "zero registry credential on the box" property and require a second
@@ -120,7 +119,7 @@ and OpenSSF Scorecard) against a tag being force-moved or a compromised action p
 version under an existing tag; it is a concrete, visible artifact for the "supply-chain security"
 part of the talk. Dependabot keeps the maintenance cost near zero.
 
-**Alternatives considered**: Pin by major version tag only (`@v4`) — simpler to read, but
+**Alternatives considered**: Pin by major version tag only (`@v4`), simpler to read, but
 strictly weaker supply-chain guarantee; rejected since the SHA-pinning cost is fully absorbed by
 Dependabot automation.
 
@@ -133,21 +132,21 @@ the pipeline only on `CRITICAL` or `HIGH` severity findings **that have a known 
 Findings with no fix available, or below HIGH, are reported (job summary + uploaded SARIF) but do
 not block. A checked-in `.trivyignore` allows a reviewed, per-CVE exception, each line commented
 with the reason and a re-review date; exceptions are added via normal PR review (not by the
-change's own author unilaterally merging past the gate — the PR review requirement is the control).
+change's own author unilaterally merging past the gate, the PR review requirement is the control).
 The Trivy vulnerability DB used in CI is refreshed on a schedule the team controls (daily
 `workflow_dispatch`/cron cache refresh job) rather than implicitly on every run, and the exact
 image used for the live demo is scanned and frozen the day before the talk, not rebuilt on stage.
 
-**Rationale**: Directly answers the brief's explicit worry ("a new CVE on the morning of the talk
+**Rationale**: Directly answers the explicit requirement ("a new CVE on the morning of the talk
 must not make the pipeline flaky"): "no fix available" can never regress from green to red
 overnight, because those findings never block in the first place; the only way a previously-green
-image goes red is a *new fixable* HIGH/CRITICAL in a dependency that hasn't been rebuilt — which,
+image goes red is a *new fixable* HIGH/CRITICAL in a dependency that hasn't been rebuilt, which,
 under Principle I (build once), doesn't happen to an already-promoted artifact, only to the *next*
 build.
 
-**Alternatives considered**: Block on any HIGH/CRITICAL regardless of fix availability — simpler
-policy, but directly contradicts the brief's determinism requirement (an unfixable transitive CVE
-could appear at any time and permanently block releases). Ignore Trivy results entirely — rejected,
+**Alternatives considered**: Block on any HIGH/CRITICAL regardless of fix availability, simpler
+policy, but directly contradicts the determinism requirement (an unfixable transitive CVE
+could appear at any time and permanently block releases). Ignore Trivy results entirely, rejected,
 defeats FR-032/FR-033 and Principle II's intent.
 
 ---
@@ -159,14 +158,14 @@ dev server for local `flask run` only), pytest + pytest-cov for tests/coverage, 
 (and import sorting), Gitleaks for secret scanning (official `gitleaks-action`), Trivy
 (`aquasecurity/trivy-action`) for image scanning.
 
-**Rationale**: Matches the brief's proposed stack; Python 3.13 is stable and broadly supported by
+**Rationale**: Matches the proposed stack; Python 3.13 is stable and broadly supported by
 this date; Gunicorn avoids running Flask's development server in the container (a real, if minor,
 production/security smell worth avoiding even in a demo). Ruff replaces a
-flake8+isort+black combo with one fast, single-dependency tool — fewer moving parts (Principle
+flake8+isort+black combo with one fast, single-dependency tool, fewer moving parts (Principle
 VII) without losing lint/format coverage.
 
-**Alternatives considered**: FastAPI — no concrete advantage for a two-endpoint status app;
-Flask's simplicity and audience familiarity win. `unittest` instead of pytest — pytest's fixtures
+**Alternatives considered**: FastAPI, no concrete advantage for a two-endpoint status app;
+Flask's simplicity and audience familiarity win. `unittest` instead of pytest, pytest's fixtures
 and concise assertions are simply better ergonomics for a live-coded/live-explained test suite.
 
 ---
@@ -180,7 +179,7 @@ and concise assertions are simply better ergonomics for a live-coded/live-explai
 live demo's time budget, FR-008) and one more thing that can behave unexpectedly on stage.
 
 **Alternatives considered**: Multi-arch (`amd64`+`arm64`) to allow a cheaper Graviton
-(`t4g.micro`) instance — real cost saving, but adds build complexity and a new failure surface for
+(`t4g.micro`) instance, real cost saving, but adds build complexity and a new failure surface for
 a marginal saving; documented as a Possible Enhancement instead.
 
 ---
@@ -197,17 +196,17 @@ the GitHub API), and `gitleaks/gitleaks-action`'s own documentation states a pai
 repos). That directly conflicts with this project's "free or very low cost" constraint (brief
 §17) and would have made the PR pipeline fail for a reason invisible until someone actually ran
 it against this specific repository. The underlying `gitleaks` binary itself is MIT-licensed
-open source with no such restriction — running it directly sidesteps the wrapper's business
+open source with no such restriction, running it directly sidesteps the wrapper's business
 model entirely while producing identical detection behavior (same engine, same `.gitleaks.toml`).
 
-**Alternatives considered**: Pay for a `GITLEAKS_LICENSE` — rejected, contradicts the free/low-cost
+**Alternatives considered**: Pay for a `GITLEAKS_LICENSE`, rejected, contradicts the free/low-cost
 requirement for no real benefit (the wrapper mainly adds PR-comment automation, which
 `GITHUB_TOKEN`-based required-status-check reporting already covers for this demo's purposes).
-Use a different secret scanner (e.g. TruffleHog) — rejected, no reason to abandon Gitleaks itself,
-which was explicitly proposed in the brief and works fine as a plain CLI invocation.
+Use a different secret scanner (e.g. TruffleHog), rejected, no reason to abandon Gitleaks itself,
+which was explicitly proposed in the requirements and works fine as a plain CLI invocation.
 
 **How this was caught**: discovered during implementation validation, not left to be discovered
-live at the conference — see the corresponding entry in
+live at the conference, see the corresponding entry in
 [Determinism & Risk Register](../../README.md#determinism--risk-register).
 
 ---
@@ -220,18 +219,18 @@ Python environment); image vulnerability scanning stays inside `release.yml` (ri
 build it scans); DAST stays inside `deploy.yml` (right after the staging deploy it verifies). No
 dedicated `security.yml` file, and no `security`/`quality` job split within `pr-validation.yml`.
 
-**Rationale**: each tool's natural trigger is tied to a different artifact — Gitleaks/Bandit/
+**Rationale**: each tool's natural trigger is tied to a different artifact, Gitleaks/Bandit/
 `pip-audit` need source code (available on every push/PR, before any build), Trivy needs a built
 image (only exists post-build), ZAP needs a running instance (only exists post-deploy). Forcing
 them into one file/category would require either one workflow reacting to three unrelated event
 types, or a same-named job silently mixing an unconditional check (Gitleaks, which must never be
 skippable, Principle II) with conditional ones (Bandit/`pip-audit`, which have nothing to analyze
-on a docs-only change) — risking exactly the kind of accidental weakening a security-focused demo
+on a docs-only change), risking exactly the kind of accidental weakening a security-focused demo
 must not have. Co-locating by pipeline stage is also cheaper: tools sharing a stage share the
 same `actions/checkout`/`actions/setup-python` cost instead of paying it again per category.
 
-**Alternatives considered**: A single `security.yml` aggregating all security tools — rejected,
-see rationale above. A `security` job + `quality` job split inside `pr-validation.yml` — rejected
+**Alternatives considered**: A single `security.yml` aggregating all security tools, rejected,
+see rationale above. A `security` job + `quality` job split inside `pr-validation.yml`, rejected
 for the same reason: it would blur the obligatoire/conditionnel distinction that's more
 important, pedagogically, than a security/quality label.
 
@@ -243,59 +242,59 @@ important, pedagogically, than a security/quality label.
 and [pip-audit](https://github.com/pypa/pip-audit) for manifest-level dependency scanning, both
 added as steps in `pr-validation.yml`'s existing test job.
 
-**Rationale**: `pip-audit` is official PyPA tooling — free, no account/API key required, queries
+**Rationale**: `pip-audit` is official PyPA tooling, free, no account/API key required, queries
 the open OSV/PyPI Advisory Database. Matches the project's existing "zero unnecessary credential"
 stance (OIDC over static AWS keys, public GHCR over a private registry with a PAT). Bandit is the
 de facto standard Python SAST linter, zero-config for a small codebase, fast enough for the PR
 gate's time budget (FR-008).
 
-**Alternatives considered**: *Safety* — was the historical default for Python dependency
+**Alternatives considered**: *Safety*, was the historical default for Python dependency
 scanning, but its free tier's vulnerability database access has been restricted since its
 2022-2023 shift to a commercial model; rejected to avoid an unnecessary account/paywall for a
-demo that should run for anyone who clones it. *Snyk* — requires an account/API token; rejected
+demo that should run for anyone who clones it. *Snyk*, requires an account/API token; rejected
 for the same reason, and it would introduce a third-party SaaS dependency this project has
 deliberately avoided everywhere else.
 
 **Complementary blind spots worth noting**: `pip-audit` inspects *declared* dependencies before
 a build even happens, so it would catch a vulnerable `flask`/`gunicorn` pin earlier than Trivy
-ever could — but it would likely **not** have caught the D-listed `pip`-vendored `msgpack`/
+ever could, but it would likely **not** have caught the D-listed `pip`-vendored `msgpack`/
 `pkg_resources` finding from the first real Trivy scan (same detection limitation as `pip show`,
 which also reported those as "not found"). Trivy inspects the actual image filesystem and caught
 what `pip-audit`-style manifest scanning structurally cannot. Neither tool alone covers what the
-other does — the rationale for running both, not just one.
+other does, the rationale for running both, not just one.
 
 ---
 
 ## D11. Adding CodeQL: decoupling scan cadence from analysis rigor
 
 **Decision**: [CodeQL](.github/workflows/codeql.yml) runs a second SAST pass alongside Bandit, but
-on a deliberately different trigger — `push` to `main`, a weekly `schedule`, and manual
-`workflow_dispatch` — never on `pull_request`. See [ADR
+on a deliberately different trigger, `push` to `main`, a weekly `schedule`, and manual
+`workflow_dispatch`: never on `pull_request`. See [ADR
 0008](../../docs/adr/0008-codeql-integration.md).
 
 **Rationale**: Bandit is pattern-based and completes in seconds, so it stays inside
 `pr-validation.yml`'s gate for immediate per-PR feedback (D9's co-location logic). CodeQL performs
-dataflow/taint-tracking analysis — deeper, slower, and a poor fit for a merge-blocking gate a
+dataflow/taint-tracking analysis, deeper, slower, and a poor fit for a merge-blocking gate a
 developer waits on. Rather than forcing one tool to be both fast and exhaustive, the two
 properties are split across two tools running on two different cadences. Results upload to GitHub
 Code Scanning, the same sink already used for Trivy's SARIF report (D9), rather than a second
 bespoke integration.
 
-**Alternatives considered**: Running CodeQL inside `pr-validation.yml` alongside Bandit — rejected,
+**Alternatives considered**: Running CodeQL inside `pr-validation.yml` alongside Bandit, rejected,
 would add several minutes to every PR's required checks for a two-endpoint codebase where the
 marginal detection value over Bandit is close to zero; the cost would be paid on every PR whether
-or not the change touches anything CodeQL could usefully analyze. Not adding CodeQL at all — also
+or not the change touches anything CodeQL could usefully analyze. Not adding CodeQL at all, also
 considered, but the decoupled-cadence pattern (fast gate + deferred deep scan) is itself the
 teaching point for the webinar, independent of how much this specific small app benefits from it.
 
 **Known risk, not fully closed**: this decoupling reproduces the D9/§1.4 blind spot
-(`docs/retex-webinar.md`) in a new place — a scan that never blocks anyone and lands in a tab
+(`docs/retex-webinar.md`) in a new place, a scan that never blocks anyone and lands in a tab
 nobody is required to open is security theatre by this project's own definition unless someone
 actually reviews it between scheduled runs. Uploading to Code Scanning (a persistent, triaged
 dashboard) is a mitigation, not a fix: a dashboard that is never opened is no better than an
 artifact zip nobody downloads. See [docs/retex-webinar.md
-§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre)
-— left deliberately open rather than declared solved.
+§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre),
+left deliberately open rather than declared solved.
 
 ---
 
@@ -303,52 +302,52 @@ artifact zip nobody downloads. See [docs/retex-webinar.md
 
 **Decision**: [`image-rescan.yml`](../../.github/workflows/image-rescan.yml) re-scans the
 currently-deployed digest of both `staging` and `production` on a weekly schedule (plus
-`workflow_dispatch`) — resolved via the same GitHub Deployments API lookup
+`workflow_dispatch`), resolved via the same GitHub Deployments API lookup
 `scripts/resolve_deployment_digest.sh` already uses for rollback. Full-severity SARIF uploads to
 Code Scanning as usual, but a fixable HIGH/CRITICAL finding additionally opens (or updates) a
 GitHub Issue, and the issue is closed automatically once a later run no longer reproduces it.
 
 **Rationale**: Trivy in `release.yml` scans an image exactly once, before it is ever deployed
-(build-once, ADR 0004) — deliberately never re-checked later, so that a CVE published after the
+(build-once, ADR 0004), deliberately never re-checked later, so that a CVE published after the
 build can never retroactively fail an already-green pipeline (D5). But that design leaves a real
 gap: nothing re-checks what is *actually running* against newly-published CVEs for as long as it
 stays deployed. This closes that gap the same way D11/ADR 0008 closes it for source code
-(decoupled cadence, never blocks) — reusing the pattern rather than inventing a new one.
+(decoupled cadence, never blocks), reusing the pattern rather than inventing a new one.
 
 **Why an issue, not just another Code Scanning row**: D11 already flagged its own decoupled-cadence
-scan as reproducing the D9/§1.4 blind spot — a scan nobody is forced to look at is security
+scan as reproducing the D9/§1.4 blind spot, a scan nobody is forced to look at is security
 theatre by this project's own definition. Adding a *third* scan with the same passive-dashboard
 result would repeat that same mistake, and the stakes here are higher than for source-code
 patterns: this is a known, fixable CVE on what is serving real traffic right now, not a
 hypothetical future exploit path. An actively-created, actively-closed GitHub Issue gives the
 finding an owner and a visible lifecycle instead of one more row in a tab that requires someone to
 remember to open it. See [docs/retex-webinar.md
-§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre) —
+§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre),
 this is the closed-loop follow-up to the risk left open there, not a claim that the earlier risk
 is now retroactively fixed for CodeQL too (it isn't; CodeQL still only uploads to Code Scanning).
 
-**Alternatives considered**: Re-scanning on every push to `main` instead of a schedule — rejected,
+**Alternatives considered**: Re-scanning on every push to `main` instead of a schedule, rejected,
 the whole point is to catch drift in the *external* vulnerability database against *unchanged*
 deployed code, which a push-triggered scan cannot do (nothing changed). Failing the workflow
-(`exit-code: 1`) to get GitHub's own run-failure notification instead of an issue — rejected,
+(`exit-code: 1`) to get GitHub's own run-failure notification instead of an issue, rejected,
 indistinguishable in the Actions UI from a real infrastructure failure, and does not carry the
 same persistent, triageable, closeable lifecycle a dedicated issue does.
 
-**Consequences**: a new failure mode to be aware of — `resolve_deployment_digest.sh` requires at
+**Consequences**: a new failure mode to be aware of, `resolve_deployment_digest.sh` requires at
 least one successful GitHub Deployment to exist for the environment; on a freshly-created
 environment with no deployment history yet, this job fails loudly rather than silently skipping,
 consistent with `scripts/rollback.sh`'s existing "fail clearly, never guess" behavior.
 
-**Addendum — `drift-check` job**: `resolve_deployment_digest.sh` only reports what GitHub
+**Addendum, `drift-check` job**: `resolve_deployment_digest.sh` only reports what GitHub
 *believes* was deployed, never what is actually running; a manual out-of-band change to a
 container would go unnoticed. Added a second job (not extra steps in `rescan`) that reads the
 running container's real image reference via SSM (new script,
-`scripts/read_deployed_digest.sh` — `docker inspect app --format="{{.Config.Image}}"`,
+`scripts/read_deployed_digest.sh`: `docker inspect app --format="{{.Config.Image}}"`,
 read-only) and compares it against the declared digest, same active-issue discipline on mismatch.
-Kept as its own job specifically so `rescan` never needs AWS/SSM credentials — genuinely
+Kept as its own job specifically so `rescan` never needs AWS/SSM credentials, genuinely
 different concern (state drift, not vulnerability content), genuinely different permission
 footprint, same natural pipeline stage as `rescan` so still the same file (D9's placement
 principle). See [ADR 0009's
-addendum](../../docs/adr/0009-image-rescan-active-results.md#addendum-drift-check-job--declared-vs-actually-running).
-Not verified end-to-end against real AWS/EC2 — no credentials/Docker daemon in the sandbox this
-was built in; shell/YAML syntax checked, the actual SSM round-trip is not.
+addendum](../../docs/adr/0009-image-rescan-active-results.md#addendum-drift-check-job-declared-vs-actually-running).
+Not verified end-to-end against real AWS/EC2: shell/YAML syntax checked, the actual SSM
+round-trip is not.

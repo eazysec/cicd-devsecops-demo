@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 
 # Full SemVer 2.0.0 core + optional pre-release/build metadata (semver.org), not just a bare
-# MAJOR.MINOR.PATCH — release versions from Release Please are always bare (e.g. "1.0.1"), but
+# MAJOR.MINOR.PATCH: release versions from Release Please are always bare (e.g. "1.0.1"), but
 # local/dev defaults deliberately use a pre-release suffix ("0.0.0-dev", "0.0.0-local") to make
 # a non-released build visually obvious on the status page, and that suffix must validate too.
 _SEMVER_RE = re.compile(

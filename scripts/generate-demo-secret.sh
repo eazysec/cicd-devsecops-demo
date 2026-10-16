@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
 # Prints a random-looking, never-real, never-reused fake AWS-style credential pair for the
-# Conference Runbook's Scenario C (secret-scanning demo — spec.md US3).
+# Conference Runbook's Scenario C (secret-scanning demo: spec.md US3).
 #
 # Deliberately generated fresh each run, NEVER hardcoded anywhere in this repository: a fixed
 # literal value sitting in a tracked file (even documentation) is exactly what GitHub's own
-# push-protection secret scanning is designed to catch — it did, on this repo's very first
+# push-protection secret scanning is designed to catch: it did, on this repo's very first
 # push, blocking the push of quickstart.md/recap.md themselves. Generating it on demand avoids
 # ever having a "real-looking" static string at rest in git history.
 #

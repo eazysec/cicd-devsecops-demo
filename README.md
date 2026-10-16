@@ -341,7 +341,7 @@ rebuilds: always redeploys a previously built digest. Full design:
 | Merge button greyed out with all checks green | `docs/branch-protection.md` not yet applied, or a check name mismatch | verify required-check names match the job `name:` fields exactly |
 | `deploy-production` never starts | staging failed, or you're waiting on the required-reviewer approval | check the `deploy-staging` job status and the Environments tab for a pending review |
 | `docker pull` fails on the EC2 host | GHCR package still private | see [ADR 0003](docs/adr/0003-registry.md) / `docs/github-environments-setup.md` §4 |
-| SSM command times out | instance not registered with SSM (agent not running, or instance profile missing) | see `docs/aws-setup.md` §1-4 |
+| SSM command times out | instance not registered with SSM (agent not running, or instance profile missing) | see `docs/aws-setup.md` §1-2 |
 | Trivy fails unexpectedly the morning of the talk | a new, fixable HIGH/CRITICAL CVE | see [Determinism & Risk Register](#determinism--risk-register): freeze the demo artifact the day before |
 
 ---
@@ -404,7 +404,7 @@ docker pull ghcr.io/zaproxy/zaproxy:2.17.0
 | GitHub/registry/AWS unreachable during the talk | [Emergency Demo Plan](#emergency-demo-plan) reproduces the pre-deploy chain fully offline |
 | GitHub plan gates a needed feature (e.g. required reviewers on Environments, Code Scanning) | Repository is public, which unlocks these on the free plan (spec.md Assumptions); Code Scanning requires the paid GitHub Code Security add-on ($30/active committer/month) on a private repo, so re-check if this repository is ever made private |
 | Rate limiting on a public runner/registry | Traffic for a conference demo is well within free limits; not mitigated further |
-| DNS/network flakiness for `$APP_URL` | Elastic IP / stable DNS per `docs/aws-setup.md` step 4; bookmark URLs before the talk |
+| DNS/network flakiness for `$APP_URL` | Elastic IP / stable DNS per `docs/aws-setup.md` §2 step 4; bookmark URLs before the talk |
 | A demo branch/PR used for rehearsal pollutes `main`'s history | Demo branches (docs-only, failing-test, fake-secret) are disposable and never merged; delete after rehearsal |
 | A GitHub Action wrapper requires a paid license for org-owned repos (found: `gitleaks/gitleaks-action` for the `eazysec` org) | Run the free, MIT-licensed `gitleaks` CLI directly instead ([research.md D8](specs/001-cicd-devsecops-demo/research.md#d8-secret-scanning-execution-mode-gitleaks-cli-directly-not-gitleaks-action)) |
 | An "obviously fake" secret value doesn't trigger Gitleaks (its default rules allowlist common placeholders like `EXAMPLE`/`FAKEFAKE...`) | Use the validated, random-looking fake value from `specs/001-cicd-devsecops-demo/quickstart.md` §2, tested locally before relying on it live |

@@ -2,8 +2,8 @@
 FROM --platform=linux/amd64 python:3.13-slim AS base
 
 # Build-time metadata (Principle I: these are baked in because they describe the artifact
-# itself; ENVIRONMENT and ARTIFACT_DIGEST are deliberately NOT here — see
-# specs/001-cicd-devsecops-demo/data-model.md#versionmetadata — they are supplied as
+# itself; ENVIRONMENT and ARTIFACT_DIGEST are deliberately NOT here: see
+# specs/001-cicd-devsecops-demo/data-model.md#versionmetadata: they are supplied as
 # container run-time -e vars so the same image is promoted unchanged across environments).
 ARG APP_VERSION=0.0.0-dev
 ARG GIT_SHA=unknown

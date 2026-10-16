@@ -11,7 +11,7 @@ commit-to-production lifecycle for a live conference talk: policy-based dynamic 
 non-bypassable secret scanning, Conventional-Commits-driven SemVer releases (Release Please),
 build-once/promote-the-same-digest to AWS EC2 staging and production via SSM Run Command (no SSH,
 OIDC-based least-privilege AWS auth), Trivy image scanning with a determinism-safe severity
-policy, health-checked/smoke-tested deployments, and a documented rollback path — plus a fully
+policy, health-checked/smoke-tested deployments, and a documented rollback path, plus a fully
 local, network-independent Emergency Demo Plan. See [research.md](./research.md) for the six
 architecture decisions (D1–D7) and their rationale.
 
@@ -23,11 +23,11 @@ architecture decisions (D1–D7) and their rationale.
 + pytest-cov (tests/coverage), Ruff (lint), Gitleaks (secret scanning, via
 `gitleaks-action`), Trivy (`aquasecurity/trivy-action`, image scanning)
 
-**Storage**: N/A — the app is stateless; version/commit/build metadata is injected at build time
+**Storage**: N/A, the app is stateless; version/commit/build metadata is injected at build time
 via environment variables / build args, not persisted
 
 **Testing**: pytest (unit + Flask test client endpoint tests), pytest-cov (coverage), Ruff
-(lint/format check) — all run locally and in CI with the same commands
+(lint/format check), all run locally and in CI with the same commands
 
 **Target Platform**: Linux containers (`linux/amd64`), deployed to two AWS EC2 `t3.micro`
 instances (staging, production) running Docker Engine, reached via AWS SSM Run Command; CI runs on
@@ -56,7 +56,7 @@ Demo Plan.
 
 | Principle | Check | Status |
 |---|---|---|
-| I. Build Once, Promote the Same Artifact | Single `docker/build-push-action` build step in the release workflow produces one digest; staging and production deploy jobs both consume that same digest as a workflow output/artifact — no second build job exists anywhere in the design. | PASS |
+| I. Build Once, Promote the Same Artifact | Single `docker/build-push-action` build step in the release workflow produces one digest; staging and production deploy jobs both consume that same digest as a workflow output/artifact, no second build job exists anywhere in the design. | PASS |
 | II. Security Gates Mandatory, Author Cannot Bypass | Gitleaks runs unconditionally in the reusable PR-validation workflow, is a required status check on the `main` branch ruleset, and no workflow input/label controlled by a PR author skips it (only path-based policy adds *more* jobs, never removes this one). | PASS |
 | III. Policy-Based Dynamic Execution | A single "classify change" job (script in `scripts/classify_change.py`, unit-tested) outputs a change-type used by downstream `if:` conditions; every skipped job still appears in the run (as a skipped, not absent, job) with a reason in its name/summary. | PASS |
 | IV. Trunk-Based, Short-Lived Branches | Design assumes a `main` branch ruleset (required checks, no direct pushes) and short-lived feature/fix branches; no `develop`/`release` branches introduced. | PASS |
@@ -72,15 +72,14 @@ No violations requiring Complexity Tracking entries.
 
 ```text
 specs/001-cicd-devsecops-demo/
-├── plan.md              # This file (/speckit-plan command output)
-├── research.md          # Phase 0 output (/speckit-plan command)
-├── data-model.md         # Phase 1 output (/speckit-plan command)
-├── quickstart.md        # Phase 1 output (/speckit-plan command)
-├── contracts/           # Phase 1 output (/speckit-plan command)
-│   ├── app-endpoints.md
-│   ├── deploy-script.md
-│   └── pipeline-events.md
-└── tasks.md              # Phase 2 output (/speckit-tasks command - NOT created by /speckit-plan)
+├── plan.md              # This file
+├── research.md          # Phase 0 output
+├── data-model.md         # Phase 1 output
+├── quickstart.md        # Phase 1 output
+└── contracts/           # Phase 1 output
+    ├── app-endpoints.md
+    ├── deploy-script.md
+    └── pipeline-events.md
 ```
 
 ### Source Code (repository root)
@@ -139,10 +138,10 @@ cicd-devsecops-demo/
 **Structure Decision**: Single-project layout (no frontend/backend split, no monorepo). `app/`
 holds the Flask service, `tests/` mirrors it, `scripts/` holds every piece of logic that must be
 runnable identically from CI *and* from a laptop with no network (Emergency Demo Plan), and
-`.github/workflows/` stays thin — orchestration and `if:` policy only, delegating real logic to
-`scripts/` and one composite action, per Principle VII and the brief's explicit "YAML must not
+`.github/workflows/` stays thin, orchestration and `if:` policy only, delegating real logic to
+`scripts/` and one composite action, per Principle VII and the explicit "YAML must not
 contain all the logic" instruction.
 
 ## Complexity Tracking
 
-*No constitution violations — table intentionally empty.*
+*No constitution violations, table intentionally empty.*
