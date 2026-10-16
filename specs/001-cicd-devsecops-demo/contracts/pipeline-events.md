@@ -9,7 +9,7 @@
 | `workflow_dispatch` on `rollback.yml` | `rollback.yml` | Resolve previous known-good digest for the chosen environment (or use a supplied digest input) → `deploy.sh` | Any build step |
 | `workflow_dispatch` on `deploy.yml` (manual promote) | `deploy.yml` | Same as the automatic path, for re-running a promotion without a new commit | Any build step |
 
-**Composite/reusable design** (Principle VII / brief §31): `deploy.yml` is a reusable workflow
+**Composite/reusable design** (Principle VII): `deploy.yml` is a reusable workflow
 called both from `release.yml` and directly via `workflow_dispatch`, so the promote logic exists
 once. `pr-validation.yml` and `release.yml` both start with the same `classify-change` composite
 action (wrapping `scripts/classify_change.py`) so the policy logic exists once and is unit-tested

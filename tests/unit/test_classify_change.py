@@ -14,7 +14,7 @@ def test_docs_only_single_file():
 
 
 def test_docs_only_nested_docs_dir():
-    result = classify(["README.md", "docs/adr/0001-deployment-platform.md"])
+    result = classify(["README.md", "docs/aws-setup.md"])
     assert result.change_type == DOCS_ONLY
 
 

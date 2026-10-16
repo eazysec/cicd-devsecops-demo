@@ -39,7 +39,7 @@ production needs an explicit "go" on stage.
 The first successful `release.yml` run creates the GHCR package
 `ghcr.io/eazysec/cicd-devsecops-demo` as **private** (GHCR has no create-as-public option). Go to
 the package's GitHub page > Package settings > Change visibility > **Public**. This lets the EC2
-hosts `docker pull` without any registry credential (ADR 0003).
+hosts `docker pull` without any registry credential (research.md D3).
 
 ## 5. Repository-level (not environment-level) permissions
 

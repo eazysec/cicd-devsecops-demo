@@ -3,7 +3,7 @@
 Prepared on a dedicated branch (see README Conference Runbook), deliberately NOT merged until
 the live demo. Before this fix, a real ZAP baseline scan against the actual deployed staging
 instance (release 1.2.0, before this branch existed) found 7 genuine WARN-NEW findings,
-nothing staged/faked, see docs/retex-webinar.md and research.md D9:
+nothing staged/faked, see research.md D9:
 
   - Missing Anti-clickjacking Header [10020]                -> fixed here (X-Frame-Options)
   - X-Content-Type-Options Header Missing [10021]            -> fixed here
@@ -18,8 +18,8 @@ Two findings are deliberately left as-is, not silently missed:
   - **Storable and Cacheable Content [10049]**: this app is a read-only, public status page with
     no sensitive data, there is nothing a cached response could leak. Fixing every ZAP finding
     mechanically, regardless of whether it applies to this app's actual threat model, is exactly
-    the kind of security theatre this project argues against elsewhere (see
-    docs/retex-webinar.md). Reviewed and accepted, not overlooked.
+    the kind of security theatre this project argues against elsewhere. Reviewed and accepted,
+    not overlooked.
   - **Modern Web Application [10109]**: an informational fingerprinting note (ZAP detected
     JS-framework-like patterns), not a vulnerability, there is nothing to "fix."
 

@@ -1,13 +1,13 @@
 name: Image Re-scan (deployed digest)
 
 # Trivy in release.yml scans the image exactly once, before it's ever deployed (build-once,
-# ADR 0004): deliberately never re-checked later (research.md D5: a pipeline must not go red
+# constitution Principle I): deliberately never re-checked later (research.md D5: a pipeline must not go red
 # overnight for a CVE published after a build, with no code change of our own). But that means
 # nothing ever re-checks what's ACTUALLY deployed against newly-published CVEs for as long as it
-# stays live. This workflow closes that gap the same way CodeQL does for source code (ADR 0008:
+# stays live. This workflow closes that gap the same way CodeQL does for source code (research.md D11:
 # decoupled cadence, never blocks): except the result is an ACTIVE GitHub Issue, not another
 # passive Code Scanning row, specifically to avoid reproducing the "scan nobody looks at" blind
-# spot a third time (docs/retex-webinar.md §1.4/§1.5) on a signal that matters more than most:
+# spot a third time on a signal that matters more than most:
 # a known, fixable CVE on what's serving real traffic right now.
 on:
   schedule:

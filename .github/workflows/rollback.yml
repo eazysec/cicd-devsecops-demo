@@ -1,6 +1,6 @@
 name: Rollback
 
-# Manual, controlled operation (brief §7 workflow_dispatch; spec.md US5). Resolves the previous
+# Manual, controlled operation (workflow_dispatch; spec.md US5). Resolves the previous
 # known-good digest for an environment (or uses an operator-supplied digest, which also makes
 # this a general-purpose "promote/redeploy a named digest" entrypoint per FR-022), then
 # delegates the actual promotion to deploy.yml so every deploy path: release, manual promote,

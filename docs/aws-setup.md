@@ -1,7 +1,7 @@
 # AWS Setup (manual, run once before the first deploy)
 
 One-time AWS provisioning for this project, and the reference for what is actually deployed.
-See [ADR 0001](./adr/0001-deployment-platform.md) for why this shape was chosen (EC2 + SSM,
+See [research.md D1](../specs/001-cicd-devsecops-demo/research.md#d1-deployment-platform-staging--production) for why this shape was chosen (EC2 + SSM,
 OIDC, no SSH).
 
 Region: `eu-west-3`. Account and instance IDs are replaced by `<ACCOUNT_ID>` and

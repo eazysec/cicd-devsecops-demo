@@ -1,6 +1,6 @@
 name: Deploy
 
-# Reusable promotion workflow (brief §31: avoid duplicating deploy logic across workflows).
+# Reusable promotion workflow (avoids duplicating deploy logic across workflows).
 # Called twice by release.yml (staging, then production) with the SAME digest: this file
 # itself has no idea whether it's a first deploy or a promotion, it just places one immutable
 # digest into one environment. Also directly workflow_dispatch-able for a manual
@@ -125,7 +125,7 @@ jobs:
 
       # DAST (spec.md, research.md D9): only against staging, only on a verified-healthy
       # deploy, and deliberately informational (fail_action defaults to false): not every
-      # security signal should be a hard auto-block, see ADR 0006/research.md D9 for why this
+      # security signal should be a hard auto-block, see research.md D9 for why this
       # one specifically stays a report rather than a gate. Findings land in a build artifact
       # (allow_issue_writing disabled: no GitHub Issue spam on every staging deploy, and no
       # `issues: write` permission needed).
@@ -139,7 +139,7 @@ jobs:
           artifact_name: "zap-baseline-report"
           cmd_options: "-w report_md.md"
 
-      # Closes the gap identified in docs/retex-webinar.md: a scanner whose findings only
+      # Closes a known gap: a scanner whose findings only
       # exist in a zip nobody opens is its own kind of security theatre. Pastes ZAP's own
       # markdown report verbatim into the run's summary: no custom parsing of ZAP's JSON
       # schema (not tested against a real report, so avoided as a risk), just whatever ZAP

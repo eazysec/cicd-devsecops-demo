@@ -1,7 +1,7 @@
 name: PR Validation
 
-# Fast feedback on any working branch (brief §7 "Push sur branche de travail"), and the
-# quality/security gate set on Pull Requests into main (brief §7 "Pull Request vers main").
+# Fast feedback on any working branch (push on a working branch), and the
+# quality/security gate set on Pull Requests into main (pull request into main).
 # Never deploys, never releases: see release.yml for the main-only chain (FR-019/FR-020).
 on:
   push:
@@ -75,7 +75,7 @@ jobs:
         run: gitleaks detect --no-banner --source . --config .gitleaks.toml --redact
 
   lint:
-    # Runs unconditionally too (brief §6 example: "Docs/Lint ✅" even on doc-only changes),
+    # Runs unconditionally too (even on doc-only changes),
     # it is fast, and a docs-only PR can still touch a stray Python file worth linting.
     name: "Quality Gate: Lint"
     runs-on: ubuntu-latest
@@ -102,7 +102,7 @@ jobs:
     # Bandit (SAST) and pip-audit (dependency/SCA scanning) live here, as steps, not as their
     # own jobs: they analyze the same source checkout and need the same Python environment as
     # pytest, so co-locating them avoids paying for a second checkout+setup-python+pip-install
-    # per tool (see ADR 0006). They're gated by the same docs_only skip as the tests, since
+    # per tool (see research.md D9). They're gated by the same docs_only skip as the tests, since
     # there is nothing for either to analyze on a docs-only change.
     name: "Quality & Security Gate: Tests, SAST, Dependency Scan"
     needs: classify

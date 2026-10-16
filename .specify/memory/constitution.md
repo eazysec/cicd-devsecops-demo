@@ -49,7 +49,7 @@ must be able to see, at any point, exactly which commit is running in which envi
 
 ### VII. Minimum Viable Sophistication
 No tool, workflow, or abstraction is added unless it answers a specific pedagogical or technical
-requirement from this project's brief. Kubernetes, Helm, Argo CD, Terraform, service meshes, and
+requirement of this project. Kubernetes, Helm, Argo CD, Terraform, service meshes, and
 similar are out of scope unless a stated requirement cannot be met without them. When two
 approaches are both legitimate, the simpler one that still teaches the concept correctly wins.
 Rationale: tool sprawl dilutes the teaching point and increases the number of things that can
@@ -66,7 +66,7 @@ fail live.
   concrete reason to deviate.
 - Deployment target: evaluated during planning against build-once/promote, immutable-digest
   deploys, staging/production separation, and rollback-to-known-artifact; the chosen platform
-  and any rejected alternative must be recorded as an ADR.
+  and any rejected alternative must be recorded with its rationale (research.md).
 - Environments: at minimum `staging` and `production`, modeled as GitHub Environments with
   their own secrets/variables/protection rules, least-privilege `GITHUB_TOKEN` permissions per
   workflow/job.

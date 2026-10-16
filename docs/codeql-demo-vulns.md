@@ -24,7 +24,7 @@ a file," so it deserves the same discipline as the SSTI recipe below, if/when it
 3. Push the branch. **Do not open a PR, do not merge.**
 4. Actions → `CodeQL` workflow → **Run workflow** → pick `demo/codeql-<name>` as the branch,
    `codeql.yml`'s `workflow_dispatch` trigger runs it against an arbitrary ref, no PR/merge
-   needed (see [ADR 0008](adr/0008-codeql-integration.md); this is exactly why that trigger
+   needed (see [research.md D11](../specs/001-cicd-devsecops-demo/research.md#d11-adding-codeql-decoupling-scan-cadence-from-analysis-rigor); this is exactly why that trigger
    exists).
 5. Show the resulting Code Scanning alert (Security tab, filtered to that branch/ref).
 6. Contrast with Bandit: open a PR from the same branch (pr-validation.yml *does* run Bandit on

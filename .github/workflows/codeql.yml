@@ -1,7 +1,6 @@
 name: CodeQL
 
-# Deliberately decoupled from pr-validation.yml's fast gate (ADR 0006/0007, docs/retex-webinar.md
-# §1.4): Bandit is pattern-based and runs in seconds, so it blocks every PR for immediate
+# Deliberately decoupled from pr-validation.yml's fast gate (research.md D9/D10): Bandit is pattern-based and runs in seconds, so it blocks every PR for immediate
 # feedback. CodeQL does dataflow/taint-tracking analysis: deeper, slower, and not something a
 # developer should wait on mid-PR. It runs after a change has already landed on main, plus a
 # weekly schedule to catch newly-published query packs against unchanged code: informational,

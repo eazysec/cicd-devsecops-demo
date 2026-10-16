@@ -33,7 +33,7 @@ context. If you just want the 10-15 minute talk track, jump to the
 - [Conference Runbook](#conference-runbook)
 - [Emergency Demo Plan](#emergency-demo-plan)
 - [Determinism & Risk Register](#determinism--risk-register)
-- [Architecture Decision Records](#architecture-decision-records)
+- [Design decisions](#design-decisions)
 - [Possible Enhancements](#possible-enhancements)
 
 ## Objective
@@ -179,14 +179,14 @@ Tests + SAST + Dependency Scan (pytest, Bandit, pip-audit) as a conditional gate
 *appears* but skips its expensive steps for a `docs_only` change, with the reason stated in the
 Job Summary. Never builds an image, never deploys. Security tools are co-located by pipeline
 stage rather than grouped in a separate file/job; see
-[ADR 0006](docs/adr/0006-security-tool-placement.md) for why.
+[research.md D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category) for why.
 
 ## The main pipeline (release chain)
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml): Release Please proposes/updates
 a Release PR from Conventional Commits on `main`; merging that PR cuts a release, which is the
 only trigger for `build-scan-publish`, the **one** place in this repository that builds and
-pushes an image ([ADR 0004](docs/adr/0004-build-once-promote.md)). That image's digest is then
+pushes an image ([constitution Principle I](.specify/memory/constitution.md#i-build-once-promote-the-same-artifact-non-negotiable)). That image's digest is then
 passed, unchanged, to `deploy-staging` and, only if staging passes, to `deploy-production`. Both
 are calls to the reusable [`deploy.yml`](.github/workflows/deploy.yml).
 
@@ -243,7 +243,7 @@ across YAML `if:` conditions; see
 SemVer, derived from [Conventional Commits](https://www.conventionalcommits.org/) by
 [Release Please](https://github.com/googleapis/release-please): `fix:` gives a PATCH, `feat:` a
 MINOR, `!`/`BREAKING CHANGE:` a MAJOR. No manual version editing anywhere. See
-[ADR 0002](docs/adr/0002-release-automation.md) for why Release Please was chosen over
+[research.md D2](specs/001-cicd-devsecops-demo/research.md#d2-release-automation-conventional-commits--semver) for why Release Please was chosen over
 semantic-release for this demo.
 
 Traceability chain: Commit → Conventional Commit type → Release PR → Git tag + GitHub Release →
@@ -254,7 +254,7 @@ app's own status page (`GET /`) and `GET /health`.
 
 GitHub Container Registry, `ghcr.io/eazysec/cicd-devsecops-demo`, public (free for public repos,
 authenticates with the ambient `GITHUB_TOKEN`, needs no registry credential on the deploy hosts).
-See [ADR 0003](docs/adr/0003-registry.md).
+See [research.md D3](specs/001-cicd-devsecops-demo/research.md#d3-container-registry).
 
 ## Staging and production
 
@@ -270,7 +270,7 @@ is health-checked and smoke-tested before being considered successful
 
 AWS EC2 (two `t3.micro` instances, Docker Engine) reached via AWS Systems Manager Run Command:
 no SSH, no long-lived AWS credentials (GitHub OIDC gives a short-lived, environment-scoped IAM
-role instead). See [ADR 0001](docs/adr/0001-deployment-platform.md) for the comparison with
+role instead). See [research.md D1](specs/001-cicd-devsecops-demo/research.md#d1-deployment-platform-staging--production) for the comparison with
 Render, Cloud Run, App Runner, Fargate and Lambda, and why this project ended up here (an
 existing AWS account, and App Runner no longer onboarding new customers). One-time manual
 setup: [`docs/aws-setup.md`](docs/aws-setup.md) and
@@ -292,13 +292,13 @@ See [`SECURITY.md`](SECURITY.md) for the full policy. Summary:
   ([research.md D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category)).
 - **CodeQL** as a second, deeper SAST pass (dataflow/taint-tracking analysis), decoupled from the
   fast PR gate: runs on push to `main` and weekly, never on a PR
-  ([ADR 0008](docs/adr/0008-codeql-integration.md),
+  ([research.md D11](specs/001-cicd-devsecops-demo/research.md#d11-adding-codeql-decoupling-scan-cadence-from-analysis-rigor),
   [research.md D11](specs/001-cicd-devsecops-demo/research.md#d11-adding-codeql-decoupling-scan-cadence-from-analysis-rigor)).
 - Trivy's full SARIF report and CodeQL's findings are both uploaded to **GitHub Code Scanning**
   (Security tab), not just kept in a build artifact. Free for this public repo; a private one
   would need the paid GitHub Code Security add-on.
 - **`image-rescan.yml`** re-scans the currently-deployed digest weekly, since Trivy otherwise only
-  scans once, at build time ([ADR 0009](docs/adr/0009-image-rescan-active-results.md),
+  scans once, at build time ([research.md D12](specs/001-cicd-devsecops-demo/research.md#d12-periodic-re-scan-of-the-deployed-digest-with-an-active-not-passive-result),
   [research.md D12](specs/001-cicd-devsecops-demo/research.md#d12-periodic-re-scan-of-the-deployed-digest-with-an-active-not-passive-result)).
   It opens/closes a GitHub Issue on fixable HIGH/CRITICAL findings. Its `drift-check` job also
   compares that declared digest against what's actually running on the instance (read via SSM),
@@ -331,7 +331,7 @@ the job fails, see [`deploy.yml`](.github/workflows/deploy.yml)), or manual via 
 [`rollback.yml`](.github/workflows/rollback.yml) `workflow_dispatch` (resolves the previous
 known-good digest from the GitHub Deployments API, or accepts an operator-supplied digest). Never
 rebuilds: always redeploys a previously built digest. Full design:
-[ADR 0005](docs/adr/0005-rollback-strategy.md).
+[contracts/deploy-script.md](specs/001-cicd-devsecops-demo/contracts/deploy-script.md).
 
 ## Troubleshooting
 
@@ -340,7 +340,7 @@ rebuilds: always redeploys a previously built digest. Full design:
 | PR stuck on "Quality Gate: Unit Tests + Coverage" pending | `classify` job hasn't finished | wait: the `test` job `needs: classify` |
 | Merge button greyed out with all checks green | `docs/branch-protection.md` not yet applied, or a check name mismatch | verify required-check names match the job `name:` fields exactly |
 | `deploy-production` never starts | staging failed, or you're waiting on the required-reviewer approval | check the `deploy-staging` job status and the Environments tab for a pending review |
-| `docker pull` fails on the EC2 host | GHCR package still private | see [ADR 0003](docs/adr/0003-registry.md) / `docs/github-environments-setup.md` §4 |
+| `docker pull` fails on the EC2 host | GHCR package still private | see [research.md D3](specs/001-cicd-devsecops-demo/research.md#d3-container-registry) / `docs/github-environments-setup.md` §4 |
 | SSM command times out | instance not registered with SSM (agent not running, or instance profile missing) | see `docs/aws-setup.md` §1-2 |
 | Trivy fails unexpectedly the morning of the talk | a new, fixable HIGH/CRITICAL CVE | see [Determinism & Risk Register](#determinism--risk-register): freeze the demo artifact the day before |
 
@@ -351,10 +351,7 @@ rebuilds: always redeploys a previously built digest. Full design:
 A 10-15 minute primary path through Scenarios A-D (spec.md), with Scenario E (rollback) as an
 optional/backup step; see spec.md Assumptions for why rollback isn't on the timed critical path.
 Prepare beforehand: `main` already at a tagged `v1.0.0`, a clean working tree, and
-staging/production already deployed and healthy so the "before" state is visible. The table
-below is the condensed, public version of this sequence; see
-[`docs/roadmapLiveWebinaire.md`](docs/roadmapLiveWebinaire.md) for the exact commands, clicks and
-timing used to run it live.
+staging/production already deployed and healthy so the "before" state is visible.
 
 | # | What I show | Concept | Command | Expected result | If it fails |
 |---|---|---|---|---|---|
@@ -364,7 +361,7 @@ timing used to run it live.
 | 4 | Fix it | Same PR becomes mergeable | fix the assertion, push again | check passes, merge button enabled | None |
 | 5 | A fake secret blocks the pipeline | Layered, non-bypassable security gates | on a new branch, run `scripts/generate-demo-secret.sh >> app/scratch_do_not_commit.py`, commit, `git push`. It must be a freshly-generated random value, never a hardcoded placeholder: `EXAMPLE`/`FAKEFAKE...` is allowlisted by Gitleaks, and a *hardcoded* realistic one gets blocked at push time (see `SECURITY.md` "Fake-secret demo") | Most likely: GitHub **push protection** rejects the `git push` outright (fastest, no CI wait). If push protection isn't enabled: the PR's "Security Gate: Secret Scanning" job fails instead, merge blocked, no override available | Run `gitleaks detect` locally instead (quickstart.md §2) if Actions/GitHub is unavailable |
 | 6 | DAST finds real gaps | Some findings only exist on a *running* instance; SAST/secrets scanning can't see them | Actions, latest **Deploy** run on `staging`, artifact `zap-baseline-report` (or narrate from the last scan on record) | `WARN-NEW` × 7: missing CSP, X-Frame-Options, X-Content-Type-Options, Permissions-Policy, Cross-Origin-Embedder-Policy, plus 2 accepted-not-fixed (see the docstring of `app/security_headers.py` for why) | If the artifact is slow to open, describe the findings verbally: they're already recorded, no live scan needed |
-| 7 | Ship the fix (**only the merge is done live**) | Same push, PR, merge, Release Please sequence as any fix, prepared ahead of time so nothing is typed on stage | `fix/security-headers` is already pushed and its PR already open/green (prepared before the talk, see `docs/retex-webinar.md`); on stage: click **Merge** on that PR, a `chore(main): release ...` PR appears (Release Please bot), click **Merge** on that one too | First merge: `release.yml` runs Release Please only (no release yet, it just proposes the version). Second merge: the same workflow re-runs, cuts the release **and** continues in the same run: one build, one scan, staging deploy (ZAP re-scans automatically, now clean on the 5 fixed findings) | If a step is slow, narrate the next step from the Actions UI while it runs; worst case, switch to the [Emergency Demo Plan](#emergency-demo-plan) |
+| 7 | Ship the fix (**only the merge is done live**) | Same push, PR, merge, Release Please sequence as any fix, prepared ahead of time so nothing is typed on stage | `fix/security-headers` is already pushed and its PR already open/green (prepared before the talk); on stage: click **Merge** on that PR, a `chore(main): release ...` PR appears (Release Please bot), click **Merge** on that one too | First merge: `release.yml` runs Release Please only (no release yet, it just proposes the version). Second merge: the same workflow re-runs, cuts the release **and** continues in the same run: one build, one scan, staging deploy (ZAP re-scans automatically, now clean on the 5 fixed findings) | If a step is slow, narrate the next step from the Actions UI while it runs; worst case, switch to the [Emergency Demo Plan](#emergency-demo-plan) |
 | 8 | Approve the production promotion | Promotion gate / manual approval | click "Review deployments", then Approve in the Actions run | `deploy-production` starts | If Environments protection isn't configured yet, explain what *would* happen and show `docs/github-environments-setup.md` |
 | 9 | New version live | Traceable version bump, same digest | reload `$PROD_URL` | Updated version/Git SHA/build time; the `staging` and `production` Deployment digests in the Environments tab are identical | None |
 | 10 *(optional)* | Rollback | Restoring a known-good artifact without rebuilding | trigger `rollback.yml` via `workflow_dispatch` against `production` | production returns to the prior digest, health-checked | Skip if short on time; mention that it's implemented and unit-tested (`tests/unit/test_resolve_previous_digest.py`) |
@@ -400,7 +397,7 @@ docker pull ghcr.io/zaproxy/zaproxy:2.17.0
 |---|---|
 | Mutable GitHub Action tag gets force-moved or compromised | Every Action pinned by full commit SHA ([research.md D4](specs/001-cicd-devsecops-demo/research.md#d4-github-actions-supply-chain-pinning)) |
 | New CVE published the morning of the talk | Only fixable HIGH/CRITICAL blocks; build the demo's exact artifact and verify it the day before, don't rebuild live ([research.md D5](specs/001-cicd-devsecops-demo/research.md#d5-vulnerability-scanning-policy-trivy)) |
-| Free-tier compute sleeps/cold-starts mid-talk | Always-on EC2 instances, no scale-to-zero platform ([ADR 0001](docs/adr/0001-deployment-platform.md)) |
+| Free-tier compute sleeps/cold-starts mid-talk | Always-on EC2 instances, no scale-to-zero platform ([research.md D1](specs/001-cicd-devsecops-demo/research.md#d1-deployment-platform-staging--production)) |
 | GitHub/registry/AWS unreachable during the talk | [Emergency Demo Plan](#emergency-demo-plan) reproduces the pre-deploy chain fully offline |
 | GitHub plan gates a needed feature (e.g. required reviewers on Environments, Code Scanning) | Repository is public, which unlocks these on the free plan (spec.md Assumptions); Code Scanning requires the paid GitHub Code Security add-on ($30/active committer/month) on a private repo, so re-check if this repository is ever made private |
 | Rate limiting on a public runner/registry | Traffic for a conference demo is well within free limits; not mitigated further |
@@ -410,17 +407,21 @@ docker pull ghcr.io/zaproxy/zaproxy:2.17.0
 | An "obviously fake" secret value doesn't trigger Gitleaks (its default rules allowlist common placeholders like `EXAMPLE`/`FAKEFAKE...`) | Use the validated, random-looking fake value from `specs/001-cicd-devsecops-demo/quickstart.md` §2, tested locally before relying on it live |
 | ZAP's Docker image (large) fails to pull mid-demo, or `pip-audit`'s OSV API is unreachable | ZAP scan is informational, not blocking (a failed pull just means no DAST report for that run); pre-pull `ghcr.io/zaproxy/zaproxy:2.17.0` the day before for the local Emergency Demo Plan; `pip-audit` only runs in CI (GitHub-hosted runners have reliable outbound network), never required for the Emergency Demo Plan |
 
-## Architecture Decision Records
+## Design decisions
 
-- [0001: Deployment platform, AWS EC2 + SSM](docs/adr/0001-deployment-platform.md)
-- [0002: Release automation, Release Please](docs/adr/0002-release-automation.md)
-- [0003: Container registry, public GHCR](docs/adr/0003-registry.md)
-- [0004: Build once, promote the same artifact](docs/adr/0004-build-once-promote.md)
-- [0005: Rollback strategy](docs/adr/0005-rollback-strategy.md)
-- [0006: Security tool placement, co-located by pipeline stage](docs/adr/0006-security-tool-placement.md)
-- [0007: SAST/SCA tool selection, Bandit + pip-audit](docs/adr/0007-sast-sca-tool-selection.md)
-- [0008: CodeQL integration, separate cadence, not a PR gate](docs/adr/0008-codeql-integration.md)
-- [0009: Periodic image re-scan with active results](docs/adr/0009-image-rescan-active-results.md)
+Each technical choice is recorded with its rationale and rejected alternatives in
+[`research.md`](specs/001-cicd-devsecops-demo/research.md):
+
+- [D1: Deployment platform, AWS EC2 + SSM](specs/001-cicd-devsecops-demo/research.md#d1-deployment-platform-staging--production)
+- [D2: Release automation, Release Please](specs/001-cicd-devsecops-demo/research.md#d2-release-automation-conventional-commits--semver)
+- [D3: Container registry, public GHCR](specs/001-cicd-devsecops-demo/research.md#d3-container-registry)
+- [D4: GitHub Actions supply-chain pinning](specs/001-cicd-devsecops-demo/research.md#d4-github-actions-supply-chain-pinning)
+- [D5: Vulnerability scanning policy (Trivy)](specs/001-cicd-devsecops-demo/research.md#d5-vulnerability-scanning-policy-trivy)
+- [D8: Secret scanning with the gitleaks CLI](specs/001-cicd-devsecops-demo/research.md#d8-secret-scanning-execution-mode-gitleaks-cli-directly-not-gitleaks-action)
+- [D9: Security tool placement, co-located by pipeline stage](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category)
+- [D10: SAST/SCA tool selection, Bandit + pip-audit](specs/001-cicd-devsecops-demo/research.md#d10-sastsca-tool-selection-bandit--pip-audit)
+- [D11: CodeQL integration, separate cadence, not a PR gate](specs/001-cicd-devsecops-demo/research.md#d11-adding-codeql-decoupling-scan-cadence-from-analysis-rigor)
+- [D12: Periodic image re-scan with active results](specs/001-cicd-devsecops-demo/research.md#d12-periodic-re-scan-of-the-deployed-digest-with-an-active-not-passive-result)
 
 ## Possible Enhancements
 
@@ -438,7 +439,7 @@ conference demo (constitution Principle VII).
   emit SARIF natively; the workarounds (an unofficial third-party converter, or rebuilding the
   scan around ZAP's Automation Framework instead of the baseline action) were judged too fragile
   to ship without end-to-end testing. A Markdown summary in the Job Summary was implemented
-  instead (see `docs/retex-webinar.md`).
+  instead.
 - **Org-wide reusable security workflows.** `deploy.yml` is already a reusable workflow
   (`workflow_call`); extracting the Gitleaks/Bandit/pip-audit/Trivy/ZAP/CodeQL steps the same way
   and publishing them from an organization-level `.github` repo is the standard GitHub pattern

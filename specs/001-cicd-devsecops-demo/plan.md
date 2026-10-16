@@ -131,7 +131,6 @@ cicd-devsecops-demo/
 ├── README.md
 ├── SECURITY.md
 └── docs/
-    ├── adr/                   # short ADRs (0001-deployment-platform.md, ...)
     └── diagrams/               # Mermaid sources if not inlined in README
 ```
 

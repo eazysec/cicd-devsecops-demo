@@ -193,8 +193,7 @@ using the `gitleaks/gitleaks-action` wrapper originally planned.
 **Rationale**: this repository is owned by the `eazysec` GitHub **organization** (confirmed via
 the GitHub API), and `gitleaks/gitleaks-action`'s own documentation states a paid
 `GITLEAKS_LICENSE` is required for organization-owned repositories (free only for personal-user
-repos). That directly conflicts with this project's "free or very low cost" constraint (brief
-§17) and would have made the PR pipeline fail for a reason invisible until someone actually ran
+repos). That directly conflicts with this project's "free or very low cost" constraint (constitution, Technology & Scope Constraints) and would have made the PR pipeline fail for a reason invisible until someone actually ran
 it against this specific repository. The underlying `gitleaks` binary itself is MIT-licensed
 open source with no such restriction, running it directly sidesteps the wrapper's business
 model entirely while producing identical detection behavior (same engine, same `.gitleaks.toml`).
@@ -267,10 +266,9 @@ other does, the rationale for running both, not just one.
 
 ## D11. Adding CodeQL: decoupling scan cadence from analysis rigor
 
-**Decision**: [CodeQL](.github/workflows/codeql.yml) runs a second SAST pass alongside Bandit, but
+**Decision**: [CodeQL](../../.github/workflows/codeql.yml) runs a second SAST pass alongside Bandit, but
 on a deliberately different trigger, `push` to `main`, a weekly `schedule`, and manual
-`workflow_dispatch`: never on `pull_request`. See [ADR
-0008](../../docs/adr/0008-codeql-integration.md).
+`workflow_dispatch`: never on `pull_request`. See [research.md D11](#d11-adding-codeql-decoupling-scan-cadence-from-analysis-rigor).
 
 **Rationale**: Bandit is pattern-based and completes in seconds, so it stays inside
 `pr-validation.yml`'s gate for immediate per-PR feedback (D9's co-location logic). CodeQL performs
@@ -287,13 +285,12 @@ or not the change touches anything CodeQL could usefully analyze. Not adding Cod
 considered, but the decoupled-cadence pattern (fast gate + deferred deep scan) is itself the
 teaching point for the webinar, independent of how much this specific small app benefits from it.
 
-**Known risk, not fully closed**: this decoupling reproduces the D9/§1.4 blind spot
-(`docs/retex-webinar.md`) in a new place, a scan that never blocks anyone and lands in a tab
+**Known risk, not fully closed**: this decoupling reproduces the D9 blind spot
+in a new place, a scan that never blocks anyone and lands in a tab
 nobody is required to open is security theatre by this project's own definition unless someone
 actually reviews it between scheduled runs. Uploading to Code Scanning (a persistent, triaged
 dashboard) is a mitigation, not a fix: a dashboard that is never opened is no better than an
-artifact zip nobody downloads. See [docs/retex-webinar.md
-§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre),
+artifact zip nobody downloads. This risk is
 left deliberately open rather than declared solved.
 
 ---
@@ -308,10 +305,10 @@ Code Scanning as usual, but a fixable HIGH/CRITICAL finding additionally opens (
 GitHub Issue, and the issue is closed automatically once a later run no longer reproduces it.
 
 **Rationale**: Trivy in `release.yml` scans an image exactly once, before it is ever deployed
-(build-once, ADR 0004), deliberately never re-checked later, so that a CVE published after the
+(build-once, constitution Principle I), deliberately never re-checked later, so that a CVE published after the
 build can never retroactively fail an already-green pipeline (D5). But that design leaves a real
 gap: nothing re-checks what is *actually running* against newly-published CVEs for as long as it
-stays deployed. This closes that gap the same way D11/ADR 0008 closes it for source code
+stays deployed. This closes that gap the same way D11 closes it for source code
 (decoupled cadence, never blocks), reusing the pattern rather than inventing a new one.
 
 **Why an issue, not just another Code Scanning row**: D11 already flagged its own decoupled-cadence
@@ -321,9 +318,7 @@ result would repeat that same mistake, and the stakes here are higher than for s
 patterns: this is a known, fixable CVE on what is serving real traffic right now, not a
 hypothetical future exploit path. An actively-created, actively-closed GitHub Issue gives the
 finding an owner and a visible lifecycle instead of one more row in a tab that requires someone to
-remember to open it. See [docs/retex-webinar.md
-§1.5](../../docs/retex-webinar.md#15-découpler-cadence-de-scan-et-rigueur-danalyse--bonne-architecture-nouveau-risque-de-théâtre),
-this is the closed-loop follow-up to the risk left open there, not a claim that the earlier risk
+remember to open it. This is the closed-loop follow-up to the risk left open in D11, not a claim that the earlier risk
 is now retroactively fixed for CodeQL too (it isn't; CodeQL still only uploads to Code Scanning).
 
 **Alternatives considered**: Re-scanning on every push to `main` instead of a schedule, rejected,
@@ -347,7 +342,6 @@ read-only) and compares it against the declared digest, same active-issue discip
 Kept as its own job specifically so `rescan` never needs AWS/SSM credentials, genuinely
 different concern (state drift, not vulnerability content), genuinely different permission
 footprint, same natural pipeline stage as `rescan` so still the same file (D9's placement
-principle). See [ADR 0009's
-addendum](../../docs/adr/0009-image-rescan-active-results.md#addendum-drift-check-job-declared-vs-actually-running).
+principle).
 Not verified end-to-end against real AWS/EC2: shell/YAML syntax checked, the actual SSM
 round-trip is not.

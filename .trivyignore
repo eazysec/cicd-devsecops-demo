@@ -1,6 +1,6 @@
 # Trivy vulnerability exception file for cicd-devsecops-demo.
 #
-# Policy (docs/adr and research.md D5): the pipeline blocks promotion ONLY on
+# Policy (research.md D5): the pipeline blocks promotion ONLY on
 # CRITICAL/HIGH findings that have a known fix available (`--ignore-unfixed`). A CVE
 # with no fix available can never appear here as a "workaround": it already doesn't
 # block, by policy, so it needs no entry. This file exists ONLY for a reviewed,

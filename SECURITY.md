@@ -8,7 +8,7 @@ because the practices it describes are meant to be copied into projects where it
 
 - No credential of any kind is ever committed to this repository. All deployment credentials are
   short-lived, obtained via GitHub OIDC → AWS IAM role assumption (see
-  [ADR 0001](docs/adr/0001-deployment-platform.md)), there is no long-lived AWS access key
+  [research.md D1](specs/001-cicd-devsecops-demo/research.md#d1-deployment-platform-staging--production)), there is no long-lived AWS access key
   anywhere in this project, in GitHub Secrets or otherwise.
 - Every push and every Pull Request is scanned by [Gitleaks](https://github.com/gitleaks/gitleaks)
   (`.gitleaks.toml`), and this check is mandatory: it cannot be skipped by policy for any change
@@ -77,7 +77,7 @@ alone (the same non-bypass principle as secret scanning).
 The full-severity SARIF report (everything, not just what blocks) is uploaded to **GitHub Code
 Scanning** (Security tab), not just kept as a build artifact, a scanner whose output only exists
 in a zip nobody opens unless something already failed elsewhere is its own kind of security
-theatre (see `docs/retex-webinar.md`). Free for this repository (public); a private repo would
+theatre. Free for this repository (public); a private repo would
 need the paid GitHub Code Security add-on for this same feature, see [GitHub's Advanced Security
 billing docs](https://docs.github.com/en/billing/concepts/product-billing/github-advanced-security).
 
@@ -90,14 +90,14 @@ a weekly (+ on-demand) re-scan of the currently-deployed digest on both `staging
 opens (or updates) a GitHub Issue, closed automatically once no longer reproduced, specifically to
 avoid repeating the "scan nobody looks at" pattern a third time on a finding that matters more
 than most: a known, fixable CVE on what is serving real traffic right now. See
-[ADR 0009](docs/adr/0009-image-rescan-active-results.md).
+[research.md D12](specs/001-cicd-devsecops-demo/research.md#d12-periodic-re-scan-of-the-deployed-digest-with-an-active-not-passive-result).
 
 ## Static analysis and dependency scanning policy (SAST/SCA)
 
 Every push/PR touching application code runs [Bandit](https://bandit.readthedocs.io/) (SAST) and
 [pip-audit](https://github.com/pypa/pip-audit) (dependency vulnerability scanning) alongside the
 test suite, conditional gates, same as the tests, skipped with a stated reason for a
-documentation-only change (see [ADR 0006](docs/adr/0006-security-tool-placement.md)). Both
+documentation-only change (see [research.md D9](specs/001-cicd-devsecops-demo/research.md#d9-security-tool-placement-co-located-by-pipeline-stage-not-grouped-by-category)). Both
 currently block on any finding (no severity threshold, unlike Trivy), the codebase is small
 enough that this hasn't yet needed the same nuanced policy Trivy has; revisit if that stops being
 true.
@@ -115,8 +115,8 @@ despite auditing overlapping ground, they have different, complementary blind sp
 stays in the PR gate for immediate feedback; CodeQL does dataflow/taint-tracking analysis, which
 is slower and not something a developer should wait on mid-review. It is informational, uploaded
 to GitHub Code Scanning alongside Trivy's SARIF report, and never blocks a merge, see
-[docs/retex-webinar.md §1.5](docs/retex-webinar.md) for why decoupling scan cadence from analysis
-rigor is a deliberate architectural choice, and the security-theatre risk it introduces if nobody
+[research.md D11](specs/001-cicd-devsecops-demo/research.md#d11-adding-codeql-decoupling-scan-cadence-from-analysis-rigor)
+for why decoupling scan cadence from analysis rigor is a deliberate architectural choice, and the security-theatre risk it introduces if nobody
 actually reviews the results between scheduled runs.
 
 [docs/codeql-demo-vulns.md](docs/codeql-demo-vulns.md) catalogs illustrative vulnerabilities

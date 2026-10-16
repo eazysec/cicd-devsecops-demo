@@ -8,7 +8,7 @@
 
 **Input**: User description: "Full CI/CD DevSecOps live-demo pipeline: Flask app, dynamic
 policy-based GitHub Actions pipeline, security gates, build-once/promote, staging/production
-deployment, rollback, conference runbook", expanded from a detailed French brief covering the
+deployment, rollback, conference runbook", expanded from detailed requirements covering the
 full commit-to-production lifecycle, dynamic/policy-based pipeline execution, mandatory security
 gates, SemVer + Conventional Commits release automation, build-once/promote-the-same-artifact,
 GHCR, Trivy scanning, GitHub Environments for staging/production, health checks, smoke tests,
@@ -382,11 +382,11 @@ healthy, with the action recorded in the deployment history.
 ## Assumptions
 
 - The deployment platform (Render vs. an alternative) is a technical/architectural decision, not
-  a business-scope decision; it is made and justified as an ADR during the planning phase against
+  a business-scope decision; it is made and justified in research.md during the planning phase against
   the criteria in the requirements (immutable digest deploys, staging/production separation, rollback,
   cost, reliability, conference-friendliness), not asked as a clarification here.
 - Likewise, the specific release-automation tool (e.g. semantic-release vs. Release Please vs. a
-  minimal custom script) is decided and justified as an ADR during planning; the requirement here
+  minimal custom script) is decided and justified in research.md during planning; the requirement here
   is only the observable behavior (FR-024–FR-026).
 - The GitHub repository `eazysec/cicd-devsecops-demo` is public, which is assumed to unlock
   GitHub Environment protection rules (e.g. required reviewers) and unlimited Actions minutes on
