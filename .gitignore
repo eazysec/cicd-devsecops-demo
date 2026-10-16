@@ -16,10 +16,11 @@ dist/
 .idea/
 .DS_Store
 
-# Claude Code local/session state (never commit credentials); .claude/skills/ (Spec Kit
-# commands) is intentionally versioned for reproducibility of the spec-driven workflow.
-.claude/settings.local.json
-.claude/*.local.*
+# Spec Kit tooling: local only (regenerate with `specify init`).
+# The specs themselves (specs/) and the constitution (.specify/memory/) stay versioned.
+.claude/
+.specify/*
+!.specify/memory/
 
 # Env files (never commit real secrets)
 .env
